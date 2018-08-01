@@ -1,5 +1,7 @@
 # Public and Private Networks
 
+![](./public-and-private-networks.png)
+
 ```bash
 terraform init
 # Edit terraform.tfvars as per variables.tf, or use -var "key=val", or set TF_VAR_key, or enter values at the prompt
@@ -46,7 +48,7 @@ GOOGLE_IP=$(dig +short google.ca)
 openstack router set --route destination=$GOOGLE_IP/32,gateway=10.111.0.1 myproject_private
 ```
 
-Or blanket everyting style (in which case you would not need the
+Or blanket everything style (in which case you would not need the
 `10.111.0.0/24 -> 10.111.0.1` route anymore as well):
 
 ```bash
@@ -69,9 +71,10 @@ If its not working, `dig +short google.ca` might be using a new value, try
 using exactly the same IP as in the static route.
 
 This is interesting because then you can essentially temporarily toggle access
-to the public internet by adding and removing the static route.
-
-You could also add an external gateway to the private router.
+to the public internet by adding and removing the static route. You could also
+add an external gateway to the private router. Or you could route requests to
+another router with an external gateway solely responsible for egress of
+instances in the private network.
 
 ## Cleanup
 
