@@ -7,6 +7,8 @@ terraform plan
 terraform apply
 ```
 
+The bulk of the content is in [networking.tf](./networking.tf).
+
 Note, the interfaces attached to the routers may take ~30s or so to become UP
 and active.
 
