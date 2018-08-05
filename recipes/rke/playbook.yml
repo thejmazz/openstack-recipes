@@ -1,0 +1,43 @@
+---
+- name: "Install RKE"
+
+  hosts: type_openstack_compute_floatingip_associate_v2
+  become: yes
+  become_user: root
+
+  vars:
+    RKE_VERSION: "0.1.8"
+
+  tasks:
+    - name: Ensure /opt/bin exists
+      file:
+        path: /opt/bin
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Add /opt/bin to PATH for all users
+      copy:
+        dest: /etc/profile.d/opt-bin.sh
+        content: |
+          export PATH=$PATH:/opt/bin
+    - name: Download RKE
+      get_url:
+        url: "https://github.com/rancher/rke/releases/download/v{{ RKE_VERSION }}/rke_linux-amd64"
+        dest: /opt/bin/rke
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Add google cloud key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    - name: Add kubernetes apt repository
+      apt_repository:
+        repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+        filename: kubernetes.list
+    - name: Install kubectl
+      apt:
+        name: "{{ item }}"
+      with_items:
+        - kubectl
