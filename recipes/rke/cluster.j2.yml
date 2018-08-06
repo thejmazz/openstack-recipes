@@ -1,0 +1,62 @@
+nodes:
+{% for host in groups['rke_node'] %}
+  - address: {{ host }}
+    hostname_override: {{ hostvars[host]['ansible_hostname'] }}
+    user: ubuntu
+    role:
+{% if 'rke_role_controlplane' in hostvars[host]['group_names'] %}
+      - controlplane
+{% endif %}
+{% if 'rke_role_etcd' in hostvars[host]['group_names'] %}
+      - etcd
+{% endif %}
+{% if 'rke_role_worker' in hostvars[host]['group_names'] %}
+      - worker
+{% endif %}
+{% endfor %}
+
+ignore_docker_version: true
+ssh_key_path: ~/.ssh/id_rsa
+ssh_agent_auth: false
+
+# Set the name of the Kubernetes cluster
+cluster_name: local
+
+kubernetes_version: v1.11.1-rancher1-1
+
+# Default Tags: https://github.com/rancher/types/blob/master/apis/management.cattle.io/v3/k8s_defaults.go)
+# system_images:
+
+authentication:
+  strategy: x509
+
+authorization:
+  mode: rbac
+
+network:
+  plugin: weave
+
+ingress:
+  provider: nginx
+
+# addon_job_timeout: 30
+
+# All add-on manifests MUST specify a namespace
+# addons: |-
+#     ---
+#     apiVersion: v1
+#     kind: Pod
+#     metadata:
+#       name: my-nginx
+#       namespace: default
+#     spec:
+#       containers:
+#       - name: my-nginx
+#         image: nginx
+#         ports:
+#         - containerPort: 80
+
+# addons_include:
+#     - https://raw.githubusercontent.com/rook/rook/master/cluster/examples/kubernetes/rook-operator.yaml
+#     - https://raw.githubusercontent.com/rook/rook/master/cluster/examples/kubernetes/rook-cluster.yaml
+#     - /path/to/manifest

@@ -1,0 +1,142 @@
+# If you intened to deploy Kubernetes in an air-gapped environment,
+# please consult the documentation on how to configure custom RKE images.
+nodes:
+- address: 10.51.0.10
+  port: "22"
+  internal_address: ""
+  role:
+  - controlplane
+  - etcd
+  hostname_override: ""
+  user: ubuntu
+  docker_socket: /var/run/docker.sock
+  ssh_key: ""
+  ssh_key_path: ~/.ssh/id_rsa
+  labels: {}
+- address: 10.51.0.13
+  port: "22"
+  internal_address: ""
+  role:
+  - worker
+  hostname_override: ""
+  user: ubuntu
+  docker_socket: /var/run/docker.sock
+  ssh_key: ""
+  ssh_key_path: ~/.ssh/id_rsa
+  labels: {}
+- address: 10.51.0.15
+  port: "22"
+  internal_address: ""
+  role: []
+  hostname_override: ""
+  user: ubuntu
+  docker_socket: /var/run/docker.sock
+  ssh_key: ""
+  ssh_key_path: ~/.ssh/id_rsa
+  labels: {}
+services:
+  etcd:
+    image: ""
+    extra_args: {}
+    extra_binds: []
+    extra_env: []
+    external_urls: []
+    ca_cert: ""
+    cert: ""
+    key: ""
+    path: ""
+    snapshot: false
+    retention: ""
+    creation: ""
+  kube-api:
+    image: ""
+    extra_args: {}
+    extra_binds: []
+    extra_env: []
+    service_cluster_ip_range: 10.43.0.0/16
+    service_node_port_range: ""
+    pod_security_policy: false
+  kube-controller:
+    image: ""
+    extra_args: {}
+    extra_binds: []
+    extra_env: []
+    cluster_cidr: 10.42.0.0/16
+    service_cluster_ip_range: 10.43.0.0/16
+  scheduler:
+    image: ""
+    extra_args: {}
+    extra_binds: []
+    extra_env: []
+  kubelet:
+    image: ""
+    extra_args: {}
+    extra_binds: []
+    extra_env: []
+    cluster_domain: cluster.local
+    infra_container_image: ""
+    cluster_dns_server: 10.43.0.10
+    fail_swap_on: false
+  kubeproxy:
+    image: ""
+    extra_args: {}
+    extra_binds: []
+    extra_env: []
+network:
+  plugin: weave
+  options: {}
+authentication:
+  strategy: x509
+  options: {}
+  sans: []
+addons: ""
+addons_include: []
+system_images:
+  etcd: rancher/coreos-etcd:v3.1.12
+  alpine: rancher/rke-tools:v0.1.10
+  nginx_proxy: rancher/rke-tools:v0.1.10
+  cert_downloader: rancher/rke-tools:v0.1.10
+  kubernetes_services_sidecar: rancher/rke-tools:v0.1.10
+  kubedns: rancher/k8s-dns-kube-dns-amd64:1.14.8
+  dnsmasq: rancher/k8s-dns-dnsmasq-nanny-amd64:1.14.8
+  kubedns_sidecar: rancher/k8s-dns-sidecar-amd64:1.14.8
+  kubedns_autoscaler: rancher/cluster-proportional-autoscaler-amd64:1.0.0
+  kubernetes: rancher/hyperkube:v1.10.5-rancher1
+  flannel: rancher/coreos-flannel:v0.9.1
+  flannel_cni: rancher/coreos-flannel-cni:v0.2.0
+  calico_node: rancher/calico-node:v3.1.1
+  calico_cni: rancher/calico-cni:v3.1.1
+  calico_controllers: ""
+  calico_ctl: rancher/calico-ctl:v2.0.0
+  canal_node: rancher/calico-node:v3.1.1
+  canal_cni: rancher/calico-cni:v3.1.1
+  canal_flannel: rancher/coreos-flannel:v0.9.1
+  wave_node: weaveworks/weave-kube:2.1.2
+  weave_cni: weaveworks/weave-npc:2.1.2
+  pod_infra_container: rancher/pause-amd64:3.1
+  ingress: rancher/nginx-ingress-controller:0.10.2-rancher3
+  ingress_backend: rancher/nginx-ingress-controller-defaultbackend:1.4
+ssh_key_path: ~/.ssh/id_rsa
+ssh_agent_auth: false
+authorization:
+  mode: rbac
+  options: {}
+ignore_docker_version: false
+kubernetes_version: ""
+private_registries: []
+ingress:
+  provider: ""
+  options: {}
+  node_selector: {}
+  extra_args: {}
+cluster_name: ""
+cloud_provider:
+  name: ""
+prefix_path: ""
+addon_job_timeout: 0
+bastion_host:
+  address: ""
+  port: ""
+  user: ""
+  ssh_key: ""
+  ssh_key_path: ""

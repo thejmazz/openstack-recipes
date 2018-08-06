@@ -1,0 +1,25 @@
+---
+- name: "RKE etcd snapshot"
+
+  hosts: rke_role_etcd
+  become: yes
+  become_user: root
+
+  # This will loop over each etcd node and copy (with replacement)
+  # onto localhost.
+
+  vars:
+    snapshot_name: snapshot.db
+
+  tasks:
+    - name: "Copy snapshot to localhost"
+      fetch:
+        src: "/opt/rke/etcd-snapshots/{{ snapshot_name }}"
+        dest: "./backup/{{ snapshot_name }}"
+        flat: true
+    - name: "Copy pki.bundle.tar.gz to localhost"
+      fetch:
+        src: "/opt/rke/etcd-snapshots/pki.bundle.tar.gz"
+        dest: "./backup/pki.bundle.tar.gz"
+        flat: true
+

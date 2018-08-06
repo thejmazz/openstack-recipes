@@ -1,0 +1,28 @@
+---
+- name: "Prepare etcd nodes for snapshot-restore"
+
+  hosts: rke_role_etcd
+  become: yes
+  become_user: root
+
+  vars:
+    snapshot_name: snapshot.db
+
+  pre_tasks:
+    - name: Ensure /opt/rke/etcd-snapshots exists
+      file:
+        path: /opt/rke/etcd-snapshots
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+  tasks:
+    - name: "Copy snapshot to node"
+      copy:
+        src: "./backup/{{ snapshot_name }}"
+        dest: "/opt/rke/etcd-snapshots/{{ snapshot_name }}"
+    - name: "Copy pki.bundle.tar.gz to node"
+      copy:
+        src: "./backup/pki.bundle.tar.gz"
+        dest: "/opt/rke/etcd-snapshots/pki.bundle.tar.gz"

@@ -1,12 +1,28 @@
 ---
+- name: "Get facts of all RKE nodes"
+
+  # this is so that cluster.yml template can use hostvars[host]['ansible_hostname']
+
+  hosts: rke_node:!type_openstack_compute_floatingip_associate_v2
+  become: yes
+  become_user: root
+
 - name: "Install RKE"
 
-  hosts: type_openstack_compute_floatingip_associate_v2
+  hosts: controller:!type_openstack_compute_floatingip_associate_v2
   become: yes
   become_user: root
 
   vars:
     RKE_VERSION: "0.1.8"
+
+  handlers:
+    - name: restart_nginx
+      service:
+        daemon_reload: yes
+        name: nginx
+        state: restarted
+        enabled: yes
 
   tasks:
     - name: Ensure /opt/bin exists
@@ -29,6 +45,21 @@
         group: root
         mode: 0755
 
+    - name: Copy SSH key
+      copy:
+        src: ~/.ssh/candig_dev_key_rsa
+        dest: /home/ubuntu/.ssh/id_rsa
+        owner: ubuntu
+        group: ubuntu
+        mode: 0600
+    - name: Copy cluster.yml
+      template:
+        src: cluster.j2.yml
+        dest: /home/ubuntu/cluster.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: 0644
+
     - name: Add google cloud key
       apt_key:
         url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
@@ -41,3 +72,21 @@
         name: "{{ item }}"
       with_items:
         - kubectl
+
+    - name: Add Ansible apt repository
+      apt_repository:
+        repo: ppa:ansible/ansible
+    - name: Install Ansible
+      apt: name=ansible update_cache=yes
+    - name: Copy hosts
+      copy:
+        src: ./hosts
+        dest: /home/ubuntu/hosts
+    - name: Copy snapshot.yml
+      copy:
+        src: ./snapshot.yml
+        dest: /home/ubuntu/snapshot.yml
+    - name: Copy restore.yml
+      copy:
+        src: ./restore.yml
+        dest: /home/ubuntu/restore.yml
