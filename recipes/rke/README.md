@@ -12,7 +12,7 @@ be stored in terraform state. When things go wrong, you will need to debug
 through 2 layers of tooling. The "terraform for everything" approach is not for
 everyone. Here, instead I use the terraform + Ansible approach.
 
-[outputs]:= https://github.com/yamamoto-febc/terraform-provider-rke/blob/8870decf5c230536941f9b65a85183c577b7e2a9/rke/resource_rke_cluster.go#L31
+[outputs]: https://github.com/yamamoto-febc/terraform-provider-rke/blob/8870decf5c230536941f9b65a85183c577b7e2a9/rke/resource_rke_cluster.go#L31
 
 I think it is simpler to control our own `cluster.yml` rather than wrapping it
 up in a terraform provider. In addition RKE is undergoing development and it
@@ -24,24 +24,26 @@ See the [RKE Docs](https://rancher.com/docs/rke/v0.1.x/en/).
 Follow these instructions to deploy a Kubernetes cluster using RKE, deploy an
 IngressController and stateless app to it (the backup/restore of stateful apps
 running within K8s itself is NOT demonstrated here), then run some backup and
-restore procedures.
+restore procedures over some scenarios:
 
-- [x] single stacked master failure
-- [ ] single controller failure
-- [ ] single etcd failure
-- [ ] multiple etcd failure
-- [ ] multiple controllers failure
-- [ ] multiple controllers and etcd nodes failures (only workers left)
-- [ ] cluster completely destroyed
+- [ ] [single controlplane failure](#scenario-1-loss-single-controlplane-node)
+- [ ] [single etcd failure](#scenario-2-loss-of-single-etcd-node)
+- [x] [single stacked master (controlplane + etcd) failure](#scenario-3-loss-of-stacked-master)
+- [ ] [HA controlplane failure](#scenario-4-ha-controlplane-failure)
+- [ ] [HA etcd failure](#scenario-5-ha-etcd-failure)
+- [ ] [HA controlplane and etcd failures](#scenario-6-ha-controlplane-and-etcd-failure) (only workers left)
+- [ ] [cluster completely destroyed](#scenario-7-cluster-completely-destroyed)
 
 This recipe was written using RKE v0.1.8.
 
 It deploys
 
 - A public and private network
-- A bastion host with a public IP (which also runs HAProxy)
-- A `rke_controller` host, not to be confused with K8s controlplane nodes
+- A bastion host with a public IP
+- A `rke_controller` host, not to be confused with RKE controlplane role nodes
 - Alternative sets of controlplane, etcd, and worker nodes, depending on the example scenario
+
+## Deploy RKE Cluster
 
 ```bash
 terraform init
@@ -55,72 +57,6 @@ terraform plan/apply -target=module.compute
 # Ansible
 terraform-inventory --inventory > hosts
 ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts -u ubuntu --ssh-extra-args="-J ubuntu@$(terraform output bastion_ip)" playbook.yml
-```
-
-SSH into controller. Then
-
-```bash
-rke config
-rke up
-mkdir ~/.kube && cp kube_config_cluster.yml ~/.kube/config
-kubectl get nodes
-kubectl -n kube-system get pods
-
-# Deploy an app
-kubectl run whoami --image=emilevauge/whoami --replicas=2
-kubectl expose deployment whoami --port=80 --target-port=80
-cat | kubectl apply -f - <<EOF
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: whoami
-  namespace: default
-spec:
-  rules:https://github.com/yamamoto-febc/terraform-provider-rke
-  - host: whoami.local
-    http:
-      paths:
-      - backend:
-          serviceName: whoami
-          servicePort: 80
-EOF
-
-# On a worker node, can use localhost. Else use the IP of HAProxy.
-curl -H "Host: whoami.local" http://localhost/
-
-# Back on the controller, lets make a backup:
-rke etcd snapshot-save
-# This puts a PKI bundle and etcd snapshot under /opt/rke/etcd-snapshots on each node with 'etcd' role
-# Copy it to the controller, something like:
-rsync -avP ubuntu@10.50.0.7:/opt/rke/etcd-snapshots/rke_etcd_snapshot_2018-08-05T15\:48\:17Z ./rke_etcd_snapshot_2018-08-05T15\:48\:17Z
-# Copy pki.bundle.tar.gz as well
-
-# Now, simulate a failure by tainting the master with terraform:
-terraform taint openstack_compute_instance_v2.master
-terraform plan/apply
-# Notice whoami is still running, but kubectl commands now fail
-
-# Prepare new node for restore
-# SSH into the new master
-# etcd-snapshot and pki bundle
-sudo mkdir -p /opt/rke/etc-snapshots
-(s)cp pki.bundle.tar.gz /opt/rke/etcd-snapshots/
-(s)cp rke_etcd_snapshot_date /opt/rke/etcd-snapshots/rke_etcd_snapshot_date
-# K8s PKI
-sudo mkdir -p /etc/kubernetes/ssl
-
-# This was so etcd could find its certs - happened to be same IP though
-# Don't need to do this. Let the etcd fail w/o finding its certs until `rke up` is ran
-# sudo tar xzfv pki.bundle.tar.gz --strip-components=3 -C /etc/kubernetes/ssl
-
-# Back on controller, update cluster.yml to point to new etcd node and
-rke etcd snapshot-restore --name rke_etcd_snapshot_2018-08-05T15\:48\:17Z
-
-# After etcd restored, we can bring up controlplane, (or point existing controlplane nodes to new etcd)
-rke up
-
-# Check it was successfull, should display whoami pods
-kubectl get pods
 ```
 
 ## Deploy a Workload
@@ -190,6 +126,10 @@ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts -u ubuntu --extra-vars
 You could just as well manually use `scp` or `rsync`, etc - but will have to
 mangle your way around file permissions. Ansible `become`s `root` by default.
 
+## Scenario 1: Loss of Single controlplane Node
+
+## Scenario 2: Loss of Single etcd Node
+
 ## Scenario 3: Loss of Stacked Master
 
 ```bash
@@ -245,6 +185,14 @@ Verify the restore was successfull, you should see the `whoami` pods:
 kubectl --kubeconfig kube_config_cluster.yml get pods
 ```
 
+## Scenario 4: HA controlplane failure
+
+## Scenario 5: HA etcd failure
+
+## Scenario 6: HA controlplane and etcd failure
+
+## Scenario 7: Cluster Completely Destroyed
+
 ## Example Errors
 
 If you `rke up` before `rke etcd snapshot-restore`:
@@ -270,7 +218,8 @@ FATA[0016] Failed to reconcile etcd plane: Failed to add etcd member [etcd-rkete
 
 Congratulations, you seem to have borked the cluster. Either dig in manually
 and fix up kubelet and others, or deploy a new cluster from scratch, restored
-from an etcd snapshot.
+from an etcd snapshot. (I was also successfull by deploying a new stacked
+master node and repeating the process in the correct order).
 
 ## Notes
 
