@@ -19,12 +19,13 @@ module "compute" {
 
   network_public = "${module.networking.network_public}"
   network_private = "${module.networking.network_private}"
+
+  stacked_count = "${var.stacked_count}"
+  worker_count = "${var.worker_count}"
+  etcd_count = "${var.etcd_count}"
+  controlplane_count = "${var.controlplane_count}"
 }
 
 output "bastion_ip" {
   value = "${module.compute.bastion_ip}"
-}
-
-output "controller_ip" {
-  value = "${module.compute.controller_ip}"
 }

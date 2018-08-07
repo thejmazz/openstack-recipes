@@ -26,8 +26,8 @@ IngressController and stateless app to it (the backup/restore of stateful apps
 running within K8s itself is NOT demonstrated here), then run some backup and
 restore procedures over some scenarios:
 
-- [ ] [single controlplane failure](#scenario-1-loss-single-controlplane-node)
-- [ ] [single etcd failure](#scenario-2-loss-of-single-etcd-node)
+- [x] [single controlplane failure](#scenario-1-loss-of-single-controlplane-node)
+- [x] [single etcd failure](#scenario-2-loss-of-single-etcd-node)
 - [x] [single stacked master (controlplane + etcd) failure](#scenario-3-loss-of-stacked-master)
 - [ ] [HA controlplane failure](#scenario-4-ha-controlplane-failure)
 - [ ] [HA etcd failure](#scenario-5-ha-etcd-failure)
@@ -52,11 +52,15 @@ terraform init
 terraform plan/apply -target=module.networking
 
 # Instances
-terraform plan/apply -target=module.compute
+terraform plan/apply -target=module.compute -var-file=scenarioN.tfvars
 
 # Ansible
 terraform-inventory --inventory > hosts
 ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts -u ubuntu --ssh-extra-args="-J ubuntu@$(terraform output bastion_ip)" playbook.yml
+
+# Deploy RKE
+ssh ubuntu@$(os_get_server_ip rketest_controller) -J ubuntu@$(os_get_server_fip rketest_bastion)
+$ rke up
 ```
 
 ## Deploy a Workload
@@ -128,7 +132,64 @@ mangle your way around file permissions. Ansible `become`s `root` by default.
 
 ## Scenario 1: Loss of Single controlplane Node
 
+```bash
+openstack server delete rketest_controlplane-1
+# kubectl will now timeout
+
+# new controlplane node
+terraform plan/apply -target=module.compute -var-file=scenario1.tfvars
+terraform-inventory --inventory > hosts
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts -u ubuntu --ssh-extra-args="-J ubuntu@$(terraform output bastion_ip)" playbook.yml
+
+# in rke_controller:
+rke up
+```
+
 ## Scenario 2: Loss of Single etcd Node
+
+```bash
+terraform plan/apply -target=module.compute -var-file=scenario2.tfvars
+terraform-inventory --inventory > hosts
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts -u ubuntu --ssh-extra-args="-J ubuntu@$(terraform output bastion_ip)" playbook.yml
+
+# in rke_controller:
+rke up
+# Deploy workload
+```
+
+Take a snapshot, then
+
+```bash
+openstack server delete rketest_etcd-1
+
+# in rke_controller
+kubectl --kubeconfig kube_config_cluster.yml get componentstatuses
+```
+
+We see that etcd is timing out:
+
+```
+NAME                 STATUS      MESSAGE                                                                                    ERROR
+scheduler            Healthy     ok
+controller-manager   Healthy     ok
+etcd-0               Unhealthy   Get https://10.51.0.7:2379/health: dial tcp 10.51.0.7:2379: getsockopt: no route to host
+```
+
+Bring back etcd:
+
+```bash
+terraform plan/apply -target=module.compute -var-file=scenario2.tfvars
+terraform-inventory --inventory > hosts
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts -u ubuntu --ssh-extra-args="-J ubuntu@$(terraform output bastion_ip)" playbook.yml
+```
+
+Then
+
+```bash
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts -u ubuntu --extra-vars "snapshot_name=snapshot.db" restore.yml
+rke etcd snapshot-restore --name snapshot.db
+rke up
+```
 
 ## Scenario 3: Loss of Stacked Master
 
@@ -186,6 +247,17 @@ kubectl --kubeconfig kube_config_cluster.yml get pods
 ```
 
 ## Scenario 4: HA controlplane failure
+
+```bash
+openstack server delete rketest_controlplane-1
+```
+
+Note, the cluster is still functional! You can check health of components with:
+
+```
+# componentstatuses
+kubectl --kubeconfig kube_config_cluster.yml get cs
+```
 
 ## Scenario 5: HA etcd failure
 

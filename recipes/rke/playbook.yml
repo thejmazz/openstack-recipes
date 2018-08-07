@@ -82,11 +82,20 @@
       copy:
         src: ./hosts
         dest: /home/ubuntu/hosts
+        owner: ubuntu
+        group: ubuntu
+        mode: 0644
     - name: Copy snapshot.yml
       copy:
         src: ./snapshot.yml
         dest: /home/ubuntu/snapshot.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: 0644
     - name: Copy restore.yml
       copy:
         src: ./restore.yml
         dest: /home/ubuntu/restore.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: 0644
