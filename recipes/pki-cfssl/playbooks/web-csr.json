@@ -1,0 +1,20 @@
+{
+    "CN": "nginx.local",
+    "hosts": [
+        "nginx.local",
+        "{{ LOCAL_IPV4 }}"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "country",
+            "L": "city",
+            "O": "organization",
+            "OU": "organization-unit",
+            "ST": "state"
+        }
+    ]
+}

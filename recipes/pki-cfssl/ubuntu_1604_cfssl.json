@@ -1,0 +1,38 @@
+{
+  "variables": {
+    "floating_ip_pool": null,
+    "network_uuid": null,
+    "source": "ubuntu_1604_20180703_base",
+    "cfssl_version": "1.3.2",
+    "cfssl_version_dash": "1-3-2"
+  },
+  "builders": [{
+    "type": "openstack",
+    "image_name": "pkitest_ubuntu_1604_cfssl_{{user `cfssl_version_dash`}}",
+    "source_image_name": "{{user `source`}}",
+    "flavor": "tiny",
+    "floating_ip_pool": "{{user `floating_ip_pool`}}",
+    "networks": [ "{{user `network_uuid`}}" ],
+    "security_groups": [
+        "default",
+        "ssh_from_kidnet"
+    ],
+    "ssh_username": "ubuntu",
+    "metadata": {
+      "built-by": "packer",
+      "base_image_name": "{{user `source`}}"
+    }
+  }],
+  "provisioners": [{
+    "type": "shell-local",
+    "command": "ansible-galaxy install -r ./playbooks/requirements.yml --roles-path ./playbooks/roles"
+  }, {
+    "type": "ansible",
+    "playbook_file": "./playbooks/cfssl.yml",
+    "user": "ubuntu",
+    "extra_arguments": [
+      "--extra-vars",
+      "CFSSL_VERSION={{user `cfssl_version`}}"
+    ]
+  }]
+}

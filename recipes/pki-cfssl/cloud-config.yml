@@ -1,0 +1,4 @@
+#cloud-config
+
+# mkpasswd -m sha-512 password saltpepper
+password: $6$saltpepper$mZ70s.b21Yp8gpQqslZBnEQE4jSs/niYZYvEaFftCXQKnpY4cgolCeKr0Otz0bFr.1C09zqNozjzUieGC.ArX0
