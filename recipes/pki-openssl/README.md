@@ -62,6 +62,8 @@ Then sign the CSR using the root CA:
 openssl x509 -req -days 365 -in client.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out client.crt
 ```
 
+**NOTE:** You need to use a different serial to sign multiple requests, else you will get `SEC_ERROR_REUSED_ISSUER_AND_SERIAL` on your browser.
+
 ## Inspect Certificate
 
 ```
