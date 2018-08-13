@@ -24,7 +24,7 @@ See the [RKE Docs](https://rancher.com/docs/rke/v0.1.x/en/).
 Follow these instructions to deploy a Kubernetes cluster using RKE, deploy an
 IngressController and stateless app to it (the backup/restore of stateful apps
 running within K8s itself is NOT demonstrated here), then run some backup and
-restore procedures over some scenarios:
+restore procedures over some scenarios (3 and 7 are the most important):
 
 - [x] [single controlplane failure](#scenario-1-loss-of-single-controlplane-node)
 - [x] [single etcd failure](#scenario-2-loss-of-single-etcd-node)
@@ -49,7 +49,8 @@ It deploys
 terraform init
 
 # Networking
-terraform plan/apply -target=module.networking
+# (Need variables file just so variables are not undefined)
+terraform plan/apply -target=module.networking -var-file=scenarioN.tfvars
 
 # Instances
 terraform plan/apply -target=module.compute -var-file=scenarioN.tfvars

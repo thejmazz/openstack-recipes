@@ -1,5 +1,5 @@
 resource "openstack_compute_instance_v2" "bastion" {
-  name = "${var.project_name}_bastion"
+  name = "${var.project_name}-bastion"
 
   image_name = "ubuntu_1604_20180703_docker_17-06-2_1532301831"
   flavor_name = "tiny"
@@ -18,7 +18,7 @@ resource "openstack_compute_instance_v2" "bastion" {
 }
 
 resource "openstack_compute_instance_v2" "controller" {
-  name = "${var.project_name}_controller"
+  name = "${var.project_name}-controller"
 
   image_name = "ubuntu_1604_20180703_docker_17-06-2_1532301831"
   flavor_name = "tiny"
@@ -39,7 +39,7 @@ resource "openstack_compute_instance_v2" "controller" {
 resource "openstack_compute_instance_v2" "etcds" {
   count = "${var.etcd_count}"
 
-  name = "${var.project_name}_etcd-${count.index + 1}"
+  name = "${var.project_name}-etcd-${count.index + 1}"
 
   image_name = "ubuntu_1604_20180703_docker_17-06-2_1532301831"
   flavor_name = "m1.small"
@@ -65,7 +65,7 @@ resource "openstack_compute_instance_v2" "etcds" {
 resource "openstack_compute_instance_v2" "controlplanes" {
   count = "${var.controlplane_count}"
 
-  name = "${var.project_name}_controlplane-${count.index + 1}"
+  name = "${var.project_name}-controlplane-${count.index + 1}"
 
   image_name = "ubuntu_1604_20180703_docker_17-06-2_1532301831"
   flavor_name = "m1.small"
@@ -91,7 +91,7 @@ resource "openstack_compute_instance_v2" "controlplanes" {
 resource "openstack_compute_instance_v2" "masters" {
   count = "${var.stacked_count}"
 
-  name = "${var.project_name}_master-${count.index + 1}"
+  name = "${var.project_name}-master-${count.index + 1}"
 
   image_name = "ubuntu_1604_20180703_docker_17-06-2_1532301831"
   flavor_name = "m1.small"
@@ -118,7 +118,7 @@ resource "openstack_compute_instance_v2" "masters" {
 resource "openstack_compute_instance_v2" "workers" {
   count = "${var.worker_count}"
 
-  name = "${var.project_name}_worker-${count.index + 1}"
+  name = "${var.project_name}-worker-${count.index + 1}"
 
   image_name = "ubuntu_1604_20180703_docker_17-06-2_1532301831"
   flavor_name = "m1.small"

@@ -1,11 +1,23 @@
 ---
 - name: "Get facts of all RKE nodes"
 
-  # this is so that cluster.yml template can use hostvars[host]['ansible_hostname']
-
   hosts: rke_node:!type_openstack_compute_floatingip_associate_v2
   become: yes
   become_user: root
+
+  tasks:
+    - name: Grab OpenStack metadata
+      uri:
+        url: http://169.254.169.254/openstack/2012-08-10/meta_data.json
+        body_format: json
+      register: metadata
+    # Using 'ansible_hostname' would work as well, but just to be sure,
+    # lets use the same source that kubelet will
+    # See: https://github.com/kubernetes/kubernetes/commit/6ab76041b7845af6de51752434e317b52e6ba24c
+    - name: Set os_metadata_name and os_metadata_hostname facts
+      set_fact:
+        os_metadata_hostname: "{{ metadata['json']['hostname'] }}"
+        os_metadata_name: "{{ metadata['json']['name'] }}"
 
 - name: "Install RKE"
 

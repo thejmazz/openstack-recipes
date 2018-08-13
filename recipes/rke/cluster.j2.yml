@@ -1,7 +1,7 @@
 nodes:
 {% for host in groups['rke_node'] %}
   - address: {{ host }}
-    hostname_override: {{ hostvars[host]['ansible_hostname'] }}
+    hostname_override: {{ hostvars[host]['os_metadata_name'] }}
     user: ubuntu
     role:
 {% if 'rke_role_controlplane' in hostvars[host]['group_names'] %}
@@ -25,7 +25,8 @@ cluster_name: local
 kubernetes_version: v1.11.1-rancher1-1
 
 # Default Tags: https://github.com/rancher/types/blob/master/apis/management.cattle.io/v3/k8s_defaults.go)
-# system_images:
+system_images:
+  ingress: rancher/nginx-ingress-controller:0.16.2-rancher1
 
 authentication:
   strategy: x509
@@ -60,3 +61,17 @@ ingress:
 #     - https://raw.githubusercontent.com/rook/rook/master/cluster/examples/kubernetes/rook-operator.yaml
 #     - https://raw.githubusercontent.com/rook/rook/master/cluster/examples/kubernetes/rook-cluster.yaml
 #     - /path/to/manifest
+
+cloud_provider:
+  name: openstack
+  openstackCloudProvider:
+    global:
+      username: {{ lookup('env','OS_USERNAME') }}
+      password: {{ lookup('env','OS_PASSWORD') }}
+      auth-url: {{ lookup('env','OS_AUTH_URL') }}
+      tenant-id: {{ lookup('env','OS_PROJECT_ID') }}
+      domain-id: {{ lookup('env','OS_PROJECT_DOMAIN_ID') }}
+    block_storage:
+      bs-version: v3
+      trust-device-path: false
+      ignore-volume-az: true
