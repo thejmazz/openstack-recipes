@@ -4,5 +4,5 @@ resource "openstack_compute_floatingip_v2" "public" {
 
 resource "openstack_compute_floatingip_associate_v2" "public" {
   floating_ip = "${openstack_compute_floatingip_v2.public.address}"
-  instance_id = "${openstack_compute_instance_v2.public.id}"
+  instance_id = "${var.instance_public_id}"
 }
