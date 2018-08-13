@@ -1,0 +1,3 @@
+# hex-encoded string
+# echo -n "secretsauce" | od -A n -t x1 | sed 's/ *//g'
+auth_key: 0123456789ABCDEF0123456789ABCDEF

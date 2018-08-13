@@ -1,0 +1,119 @@
+---
+- name: Gather facts on all hosts
+
+  hosts: etcd:cfssl
+  become: yes
+
+- name: Setup etcd nodes
+
+  hosts: etcd
+  become: yes
+
+  vars:
+    CFSSL_VERSION: "1.3.2"
+    ETCD_REGISTRY: "gcr.io/etcd-development/etcd"
+    ETCD_VERSION: "3.3.9"
+    ROOTCA_IPV4: "{{ hostvars[groups['cfssl'][0]]['ansible_default_ipv4']['address'] }}"
+    LOCAL_IPV4: "{{ ansible_default_ipv4['address'] }}"
+
+  roles:
+    - role: ansible-go
+      go_tarball: go1.10.3.linux-amd64.tar.gz
+      go_tarball_checksum: sha256:fa1b0e45d3b647c252f51f5e1204aba049cde4af177ef9f2181f43004f901035
+      go_version_target: "go version go1.10.3 linux/amd64"
+      go_download_location: "https://dl.google.com/go/{{ go_tarball }}"
+      # adds /etc/profile.d/{go-bin,go-path}.sh
+      set_go_path: true
+
+  tasks:
+    - name: Install build-essential
+      apt:
+        name: build-essential
+        update_cache: yes
+    - name: Download cfssl source
+      git:
+        repo: https://github.com/cloudflare/cfssl
+        dest: /root/go/src/github.com/cloudflare/cfssl
+        version: "{{ CFSSL_VERSION }}"
+    - name: Install CFSSL toolkit
+      shell: "/usr/local/go/bin/go install {{ item }}"
+      become: true
+      become_user: root
+      with_items:
+        - github.com/cloudflare/cfssl/cmd/cfssl
+        - github.com/cloudflare/cfssl/cmd/cfssljson
+        - github.com/cloudflare/cfssl/cmd/multirootca
+      changed_when: false
+
+    - name: Ensure /etc/cfssl exists
+      file:
+        path: /etc/cfssl
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy ca.pem
+      copy:
+        src: ./pkitest_ca.pem
+        dest: /etc/cfssl/ca.pem
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy request-profile.json
+      template:
+        src: ./request-profile.json
+        dest: /etc/cfssl/request-profile.json
+        owner: root
+        group: root
+        mode: 0600
+
+    - name: Copy client-csr.json
+      template:
+        src: ./client-csr.json
+        dest: /etc/cfssl/client-csr.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Generate client cert
+      # If the CA cert is in the system then -tls-remote-ca is not needed
+      shell: "/root/go/bin/cfssl gencert -config=request-profile.json -tls-remote-ca ca.pem -profile=default client-csr.json | /root/go/bin/cfssljson -bare client"
+      args:
+        creates: /etc/cfssl/client.pem
+        chdir: /etc/cfssl
+
+    - name: Copy peer-csr.json
+      template:
+        src: ./peer-csr.json
+        dest: /etc/cfssl/peer-csr.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Generate peer cert
+      # If the CA cert is in the system then -tls-remote-ca is not needed
+      shell: "/root/go/bin/cfssl gencert -config=request-profile.json -tls-remote-ca ca.pem -profile=default peer-csr.json | /root/go/bin/cfssljson -bare peer"
+      args:
+        creates: /etc/cfssl/peer.pem
+        chdir: /etc/cfssl
+
+
+
+    - name: Ensure /var/lib/etcd exists
+      file:
+        path: /var/lib/etcd
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy etcd systemd unit
+      template:
+        src: ./etcd.http.service
+        dest: /etc/systemd/system/etcd.service
+        owner: root
+        group: root
+        mode: 0644
+    - name: Start multirootca service
+      service:
+        daemon_reload: yes
+        name: etcd
+        state: started
+        enabled: yes

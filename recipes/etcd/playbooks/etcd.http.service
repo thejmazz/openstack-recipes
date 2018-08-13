@@ -1,0 +1,37 @@
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos/etcd
+After=network.target
+
+[Service]
+User=root
+Type=simple
+ExecStartPre=-/usr/bin/docker kill etcd
+ExecStartPre=-/usr/bin/docker rm etcd
+ExecStartPre=/usr/bin/docker pull {{ ETCD_REGISTRY }}:v{{ ETCD_VERSION }}
+ExecStart=/usr/bin/docker run \
+    --name etcd \
+    --network host \
+    --mount type=bind,source=/var/lib/etcd,destination=/etcd-data \
+    {{ ETCD_REGISTRY }}:v{{ ETCD_VERSION }} \
+    /usr/local/bin/etcd \
+    --name {{ ansible_hostname }} \
+    --data-dir=/etcd-data \
+    --listen-client-urls http://{{ LOCAL_IPV4 }}:2379,http://127.0.0.1:2379 \
+    --advertise-client-urls http://{{ LOCAL_IPV4 }}:2379 \
+    --listen-peer-urls http://{{ LOCAL_IPV4 }}:2380 \
+    --initial-advertise-peer-urls http://{{ LOCAL_IPV4 }}:2380 \
+    --initial-cluster-token etcd-cluster-1 \
+    --initial-cluster {% for host in groups['etcd'] %}
+{{ hostvars[host]['ansible_hostname'] }}=http://{{ host }}:2380 {%- if not loop.last %},{% endif %}
+{% endfor %} \
+    --initial-cluster-state new
+Restart=always
+RestartSec=10s
+LimitNOFILE=40000
+
+[Install]
+WantedBy=multi-user.target
+
+# --initial-cluster {{ ansible_hostname }}=http://{{ LOCAL_IPV4 }}:2380 \
+

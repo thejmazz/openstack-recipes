@@ -1,0 +1,38 @@
+---
+- name: Install CFSSL from source on Ubuntu
+
+  hosts: all
+  become: yes
+  become_user: root
+
+  vars:
+    CFSSL_VERSION: "1.3.2"
+
+  roles:
+    - role: ansible-go
+      go_tarball: go1.10.3.linux-amd64.tar.gz
+      go_tarball_checksum: sha256:fa1b0e45d3b647c252f51f5e1204aba049cde4af177ef9f2181f43004f901035
+      go_version_target: "go version go1.10.3 linux/amd64"
+      go_download_location: "https://dl.google.com/go/{{ go_tarball }}"
+      # adds /etc/profile.d/{go-bin,go-path}.sh
+      set_go_path: true
+
+  tasks:
+    - name: Install build-essential
+      apt:
+        name: build-essential
+        update_cache: yes
+    - name: Download cfssl source
+      git:
+        repo: https://github.com/cloudflare/cfssl
+        dest: /root/go/src/github.com/cloudflare/cfssl
+        version: "{{ CFSSL_VERSION }}"
+    - name: Install CFSSL toolkit
+      shell: "/usr/local/go/bin/go install {{ item }}"
+      become: true
+      become_user: root
+      with_items:
+        - github.com/cloudflare/cfssl/cmd/cfssl
+        - github.com/cloudflare/cfssl/cmd/cfssljson
+        - github.com/cloudflare/cfssl/cmd/multirootca
+      changed_when: false
