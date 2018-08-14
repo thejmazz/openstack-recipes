@@ -67,18 +67,23 @@
         group: root
         mode: 0600
 
-    - name: Copy client-csr.json
+    - name: Copy server-csr.json
       template:
-        src: ./client-csr.json
-        dest: /etc/cfssl/client-csr.json
+        src: ./server-csr.json
+        dest: /etc/cfssl/server-csr.json
         owner: root
         group: root
         mode: 0644
-    - name: Generate client cert
-      # If the CA cert is in the system then -tls-remote-ca is not needed
-      shell: "/root/go/bin/cfssl gencert -config=request-profile.json -tls-remote-ca ca.pem -profile=default client-csr.json | /root/go/bin/cfssljson -bare client"
+    - name: Generate client server TLS cert
+      shell: >
+        /root/go/bin/cfssl gencert
+        -config=request-profile.json
+        -tls-remote-ca ca.pem
+        -profile=server
+        server-csr.json |
+        /root/go/bin/cfssljson -bare server
       args:
-        creates: /etc/cfssl/client.pem
+        creates: /etc/cfssl/server.pem
         chdir: /etc/cfssl
 
     - name: Copy peer-csr.json
@@ -88,11 +93,35 @@
         owner: root
         group: root
         mode: 0644
-    - name: Generate peer cert
-      # If the CA cert is in the system then -tls-remote-ca is not needed
-      shell: "/root/go/bin/cfssl gencert -config=request-profile.json -tls-remote-ca ca.pem -profile=default peer-csr.json | /root/go/bin/cfssljson -bare peer"
+    - name: Generate peer server TLS cert
+      shell: >
+        /root/go/bin/cfssl gencert
+        -config=request-profile.json
+        -tls-remote-ca ca.pem
+        -profile=peer
+        peer-csr.json |
+        /root/go/bin/cfssljson -bare peer
       args:
         creates: /etc/cfssl/peer.pem
+        chdir: /etc/cfssl
+
+    - name: Copy client-csr.json
+      template:
+        src: ./server-csr.json
+        dest: /etc/cfssl/server-csr.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Generate root user client TLS cert
+      shell: >
+        /root/go/bin/cfssl gencert
+        -config=request-profile.json
+        -tls-remote-ca ca.pem
+        -profile=client
+        client-csr.json |
+        /root/go/bin/cfssljson -bare client
+      args:
+        creates: /etc/cfssl/client.pem
         chdir: /etc/cfssl
 
 

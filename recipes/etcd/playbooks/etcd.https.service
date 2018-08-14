@@ -28,15 +28,13 @@ ExecStart=/usr/bin/docker run \
 {% endfor %} \
     --initial-cluster-state new \
     --client-cert-auth --trusted-ca-file=/etc/ssl/ca.pem \
-    --cert-file=/etc/ssl/client.pem --key-file=/etc/ssl/client-key.pem \
+    --cert-file=/etc/ssl/server.pem --key-file=/etc/ssl/server-key.pem \
     --peer-client-cert-auth --peer-trusted-ca-file=/etc/ssl/ca.pem \
-    --peer-cert-file=/etc/ssl/peer.pem --peer-key-file=/etc/ssl/peer-key.pem
+    --peer-cert-file=/etc/ssl/peer.pem --peer-key-file=/etc/ssl/peer-key.pem \
+    --peer-cert-allowed-cn etcd.local
 Restart=always
 RestartSec=10s
 LimitNOFILE=40000
 
 [Install]
 WantedBy=multi-user.target
-
-# --initial-cluster {{ ansible_hostname }}=https://{{ LOCAL_IPV4 }}:2380 \
-

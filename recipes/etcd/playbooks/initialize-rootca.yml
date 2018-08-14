@@ -8,6 +8,17 @@
   vars:
     LOCAL_IPV4: "{{ ansible_default_ipv4['address'] }}"
 
+  pre_tasks:
+    # This is due to being airgapped
+    - name: Add hostname to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.0\.1'
+        line: "127.0.0.1 localhost {{ ansible_hostname }}"
+        owner: root
+        group: root
+        mode: 0644
+
   tasks:
     - name: Ensure /etc/cfssl exists
       file:

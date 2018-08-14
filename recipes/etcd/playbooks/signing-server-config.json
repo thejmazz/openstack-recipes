@@ -9,6 +9,36 @@
                 "client auth",
                 "server auth"
             ]
+        },
+        "profiles": {
+            "server": {
+                "auth_key": "default",
+                "expiry": "2160h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth"
+                ]
+            },
+            "client": {
+                "auth_key": "default",
+                "expiry": "2160h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "client auth"
+                ]
+            },
+            "peer": {
+                "auth_key": "default",
+                "expiry": "2160h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            }
         }
     },
     "auth_keys": {

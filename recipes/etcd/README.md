@@ -25,6 +25,6 @@ $ etcdctl get foo
 For TLS:
 
 ```
-docker run --rm -it -e ETCDCTL_API=3 -e ETCDCTL_ENDPOINTS=https://10.210.0.10:2379,https://10.210.0.11:2379,https://10.210.0.12:2379 -v /etc/cfssl:/etc/ssl gcr.io/etcd-development/etcd:v3.3.9 sh
+docker run --rm -it -v /etc/cfssl:/etc/ssl -e ETCDCTL_API=3 -e ETCDCTL_ENDPOINTS=https://10.210.0.10:2379,https://10.210.0.11:2379,https://10.210.0.12:2379 -e ETCDCTL_CACERT=/etc/ssl/ca.pem -e ETCDCTL_CERT=/etc/ssl/client.pem -e ETCDCTL_KEY=/etc/ssl/client-key.pem gcr.io/etcd-development/etcd:v3.3.9 sh
 $ etcdctl --cacert=/etc/ssl/ca.pem --cert=/etc/ssl/client.pem --key=/etc/ssl/client-key.pem member list
 ```
