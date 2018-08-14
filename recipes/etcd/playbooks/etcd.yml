@@ -106,12 +106,12 @@
         mode: 0755
     - name: Copy etcd systemd unit
       template:
-        src: ./etcd.http.service
+        src: ./etcd.https.service
         dest: /etc/systemd/system/etcd.service
         owner: root
         group: root
         mode: 0644
-    - name: Start multirootca service
+    - name: Start etcd service
       service:
         daemon_reload: yes
         name: etcd

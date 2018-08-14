@@ -21,3 +21,10 @@ $ etcdctl -w table endpoint status
 $ etcdctl put foo bar
 $ etcdctl get foo
 ```
+
+For TLS:
+
+```
+docker run --rm -it -e ETCDCTL_API=3 -e ETCDCTL_ENDPOINTS=https://10.210.0.10:2379,https://10.210.0.11:2379,https://10.210.0.12:2379 -v /etc/cfssl:/etc/ssl gcr.io/etcd-development/etcd:v3.3.9 sh
+$ etcdctl --cacert=/etc/ssl/ca.pem --cert=/etc/ssl/client.pem --key=/etc/ssl/client-key.pem member list
+```
