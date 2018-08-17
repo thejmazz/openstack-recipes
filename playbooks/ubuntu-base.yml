@@ -1,0 +1,38 @@
+---
+- name: Ubuntu with latest updates
+
+  hosts: all
+  become: yes
+  become_user: root
+
+  # this is so that we can install python 2 via raw ssh
+  gather_facts: false
+
+  pre_tasks:
+    - name: Install python 2 in case not available
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      register: output
+      changed_when: output.stdout != ""
+    - name: Gathering facts
+      setup:
+
+  tasks:
+    - name: update apt cache
+      apt: update_cache=yes
+    - name: apt dist-upgrade
+      apt: upgrade=dist
+    - name: install useful tools
+      apt: name={{ item }}
+      with_items:
+        - curl
+        - jq
+        - htop
+        - ncdu
+        # https://serverfault.com/a/706494/312364
+        - libpam-systemd
+        - dbus
+    - name: Disable unattended upgrades
+      lineinfile:
+        path: /etc/apt/apt.conf.d/20auto-upgrades
+        line: APT::Periodic::Unattended-Upgrade "0";
+        regexp: ^APT::Periodic::Unattended-Upgrade "1";$
