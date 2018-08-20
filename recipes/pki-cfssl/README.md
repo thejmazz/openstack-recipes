@@ -89,7 +89,7 @@ but the floating IP is not in the hosts. Then:
 curl: (51) SSL: no alternative certificate subject name matches target host name '172.20.4.84'
 ```
 
-To test from your workstation, place the following in your `/etc/hosts`:
+To test from your workstation, place the following in your `/etc/hosts` (for windows see [this](https://gist.github.com/zenorocha/18b10a14b2deb214dc4ce43a2d2e2992)):
 
 ```
 echo "$(terraform output web_floating_ip) nginx.local" >> /etc/hosts
