@@ -1,0 +1,8 @@
+ROOTCA_IPV4: 10.220.0.8
+auth_key: 0123456789ABCDEF0123456789ABCDEF
+gitea_postgres_password: password
+
+minio_access_key: admin
+minio_secret_key: password
+minio_host: "10.210.1.11:9000"
+gitea_pgdump: gitea.2018-07-28T22:30:31Z.sql.gz
