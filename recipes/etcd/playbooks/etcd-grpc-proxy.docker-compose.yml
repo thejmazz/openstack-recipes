@@ -1,0 +1,39 @@
+version: '3.3'
+
+services:
+  etcd-grpc-proxy:
+    container_name: etcd-grpc-proxy
+    image: gcr.io/etcd-development/etcd:v3.3.9
+    entrypoint: /usr/local/bin/etcd
+    command:
+      - grpc-proxy
+      - start
+      - --endpoints=https://10.210.0.10:2379,https://10.210.0.11:2379,https://10.210.0.12:2379
+      - --listen-addr=0.0.0.0:2379
+      - --cacert=/run/secrets/ca.pem
+      - --cert=/run/secrets/client.crt
+      - --key=/run/secrets/client.key
+      - --trusted-ca-file=/run/secrets/ca.pem
+      - --cert-file=/run/secrets/server.crt
+      - --key-file=/run/secrets/server.key
+    ports:
+      - "2379:2379"
+    network_mode: 'bridge'
+    secrets:
+      - ca.pem
+      - client.crt
+      - client.key
+      - server.crt
+      - server.key
+
+secrets:
+  ca.pem:
+    file: /etc/cfssl/ca.pem
+  client.crt:
+    file: /etc/cfssl/etcd-client.pem
+  client.key:
+    file: /etc/cfssl/etcd-client-key.pem
+  server.crt:
+    file: /etc/cfssl/etcd-proxy-server.pem
+  server.key:
+    file: /etc/cfssl/etcd-proxy-server-key.pem
