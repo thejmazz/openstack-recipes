@@ -1,0 +1,98 @@
+version: '2.3'
+
+services:
+  init:
+    image: vault
+    container_name: minio_init
+    environment:
+      VAULT_ADDR: {{ hostvars[groups['role_vault'][0]]['ansible_default_ipv4']['address'] }}:8200
+      VAULT_CACERT: /run/secrets/chain.pem
+    volumes:
+      - ./secrets:/run/secrets:ro
+      - minio-certs:/certs
+      - minio-access:/minio
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        apk add --update --no-cache jq
+
+        vault write sys/wrapping/lookup token=$$(cat /run/secrets/wrapped_secret)
+        SECRET_ID=$$(vault unwrap -field=secret_id $$(cat /run/secrets/wrapped_secret))
+        ROLE_ID=$$(cat /run/secrets/role-id)
+
+        export VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$$ROLE_ID secret_id=$$SECRET_ID)
+
+        vault write -format=json pki/issue/minio-candig-local \
+          common_name=minio.candig.local \
+        > response.json
+
+        cat response.json | jq -r '.data.certificate' > /certs/public.crt
+        cat response.json | jq -r '.data.private_key' > /certs/private.key
+        mkdir -p /certs/CAs
+        cp /run/secrets/chain.pem /certs/CAs/chain.crt
+
+        vault kv get -field=access_key secret/minio > /minio/access_key
+        vault kv get -field=secret_key secret/minio > /minio/secret_key
+
+        rm response.json
+        touch /done
+        sleep 30
+    healthcheck:
+      test: find /done
+      interval: 5s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+    # secrets:
+    #   - role-id
+    #   - wrapped_secret
+    #   - chain.pem
+
+  minio:
+    container_name: minio
+    image: minio/minio:RELEASE.2018-08-02T23-11-36Z
+    volumes:
+      - /data:/data
+      - ./secrets:/run/secrets:ro
+      - minio-certs:/root/.minio/certs
+      - minio-access:/run/secrets
+    ports:
+      - "9000:9000"
+    command: server /data
+    # secrets:
+    #   - source: minio_access_key
+    #     target: access_key
+    #   - source: minio_secret_key
+    #     target: secret_key
+    restart: "no"
+    depends_on:
+      init:
+        condition: service_healthy
+
+volumes:
+  minio-certs:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  minio-access:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+
+# secrets:
+#   minio_access_key:
+#     file: ./secrets/minio_access_key
+#   minio_secret_key:
+#     file: ./secrets/minio_secret_key
+#   fullchain.pem:
+#     file: ./secrets/fullchain.pem
+#   role-id:
+#     file: ./secrets/role-id
+#   wrapped_secret:
+#     file: ./secrets/wrapped-token
+#   chain.pem:
+#     file: ./secrets/chain.pem

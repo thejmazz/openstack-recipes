@@ -1,0 +1,34 @@
+---
+- name: Ensure /opt/minio and /opt/minio/secrets exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - /opt/minio
+    - /opt/minio/secrets
+- name: Copy secrets
+  copy:
+    content: "{{ item['content'] }}"
+    dest: "/opt/minio/secrets/{{ item['file'] }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - file: role-id
+      content: "{{ role_id }}"
+    - file: wrapped_secret
+      content: "{{ wrapped_role_secret }}"
+- name: Copy chain.pem
+  copy:
+    src: "{{ chain }}"
+    dest: "/opt/minio/secrets/chain.pem"
+    owner: root
+    group: root
+    mode: 0444
+
+- name: Set up docker-compose service
+  include_role:
+    name: '/home/jmazz/Documents/repos/openstack-recipes/roles/docker-compose'
