@@ -1,0 +1,6 @@
+---
+- name: Set up docker-compose service
+  include_role:
+    name: docker-compose
+  vars:
+    docker_compose: docker-compose.j2

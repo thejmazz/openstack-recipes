@@ -1,0 +1,30 @@
+version: '3.3'
+
+services:
+  drone_server:
+    container_name: drone-server
+    image: drone/drone:{{ tag }}
+    ports:
+      - "{{ server_port }}:8000"
+      - "{{ grpc_port }}:9000"
+    volumes:
+      - /var/lib/drone:/var/lib/drone
+    # environment:
+    #   - "DRONE_DEBUG={{ debug }}"
+    #   - "DRONE_OPEN=true"
+    #   - "DRONE_HOST={{ host }}"
+    #   - "DRONE_SECRET={{ secret }}"
+    #   - "DRONE_GITEA=true"
+    #   - "DRONE_GITEA_URL={{ gitea_url }}"
+    #   - "DRONE_ADMIN={{ admin }}"
+    #   - "DRONE_VOLUME=/etc/ssl/certs:/etc/ssl/certs"
+    environment:
+      DRONE_DEBUG: "{{ debug }}"
+      DRONE_OPEN: "true"
+      DRONE_HOST: {{ host }}
+      DRONE_SECRET: {{ secret }}
+      DRONE_GITEA: "true"
+      DRONE_GITEA_URL: {{ gitea_url }}
+      DRONE_ADMIN: {{ admin }}
+      DRONE_VOLUME: /etc/ssl/certs:/etc/ssl/certs
+    restart: 'no'

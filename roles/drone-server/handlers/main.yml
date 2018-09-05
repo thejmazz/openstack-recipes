@@ -1,0 +1,2 @@
+---
+- import_tasks: '/home/jmazz/r/openstack-recipes/roles/docker-compose/handlers/main.yml'
