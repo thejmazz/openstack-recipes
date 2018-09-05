@@ -1,0 +1,39 @@
+---
+- name: Gather facts on gitea hosts
+  hosts: app_gitea
+
+- name: Format and mount disks
+  hosts: app_drone
+  become: yes
+
+  tasks:
+    - name: Grab instance metadata
+      uri:
+        url: http://169.254.169.254/openstack/2012-08-10/meta_data.json
+        method: GET
+        return_content: yes
+      register: openstack_metadata
+    - set_fact:
+        metadata: "{{ openstack_metadata['json']['meta'] }}"
+    - debug: var=metadata
+
+    - include_role:
+        name: disk
+      vars:
+        dev: "{{ item.key }}"
+        path: "{{ item.value }}"
+      with_dict: "{{ metadata['mounts'] | from_json }}"
+
+- name: Initialize drone-server
+  hosts: drone-server
+  become: yes
+
+  tasks:
+    - include_role:
+        name: minio-client
+    - include_role:
+        name: drone-server
+      vars:
+        service: drone-server
+        host: "http://{{ ansible_default_ipv4['address'] }}:8000"
+        gitea_url: "http://{{ hostvars[groups['gitea'][0]]['ansible_default_ipv4']['address'] }}:3000"

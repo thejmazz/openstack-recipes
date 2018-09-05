@@ -1,0 +1,35 @@
+---
+- name: Gather facts on all hosts
+  hosts: network_dns:role_vault
+  become: yes
+
+- name: CoreDNS
+
+  hosts: localhost
+
+  tasks:
+    - include_tasks: '/home/jmazz/r/openstack-recipes/roles/etcd-vault/tasks/localhost.yml'
+      allowed_domains: "{{ groups['network_dns'] | map('extract', hostvars, [ 'ansible_hostname' ]) | list }}"
+      peer_cn: etcd.coredns.local
+
+    - hashivault_read:
+        secret: '/auth/approle/role/coredns_etcd/role-id'
+        key: 'role_id'
+      register: role_id
+    - hashivault_write:
+        secret: '/auth/approle/role/coredns_etcd/secret-id'
+        data:
+          wrap_ttl: '60m'
+      register: wrapped_secret_id
+
+- name: Start etcd nodes
+  hosts: network_dns
+  become: yes
+
+  roles:
+    - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/etcd-vault'
+      service: etcd
+      role_id: "{{ hostvars['localhost']['role_id']['value'] }}"
+      wrapped_secret_id: "{{ hostvars['localhost']['wrapped_secret_id']['data']['wrap_info']['token'] }}"
+      chain: ./chain.pem
+      peer_cn: etcd.coredns.local

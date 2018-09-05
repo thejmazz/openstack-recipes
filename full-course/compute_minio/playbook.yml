@@ -1,0 +1,76 @@
+---
+# - name: Gather facts on all hosts
+#   hosts: all:!type_openstack_compute_floatingip_associate_v2
+#   become: yes
+
+# - name: Dump facts
+#   hosts: localhost
+
+#   tasks:
+#     - delegate_to: localhost
+#       copy:
+#         content: "{{ hostvars[groups['minio'][0]] | to_nice_json }}"
+#         dest: ./inv.json
+
+
+- name: Minio
+  hosts: minio
+  become: yes
+
+  tasks:
+    - name: Grab instance metadata
+      uri:
+        url: http://169.254.169.254/openstack/2012-08-10/meta_data.json
+        method: GET
+        return_content: yes
+      register: openstack_metadata
+    - set_fact:
+        metadata: "{{ openstack_metadata['json']['meta'] }}"
+    - debug: var=metadata
+
+    - include_role:
+        name: disk
+      vars:
+        dev: "{{ item.key }}"
+        path: "{{ item.value }}"
+      with_dict: "{{ metadata['mounts'] | from_json }}"
+
+    # docker run --rm --name minio -d -p 9000:9000 -v /var/lib/minio:/data -e MINIO_ACCESS_KEY=admin -e MINIO_SECRET_KEY=password minio/minio server /data
+
+  # roles:
+  #   - role: disk
+  #     dev: vdb
+  #     path: /var/lib/minio
+
+# - hosts: localhost
+#   name: vault stuff
+#   tasks:
+#     - hashivault_read:
+#         secret: '/auth/approle/role/minio/role-id'
+#         key: 'role_id'
+#       register: minio_role_id
+#     - hashivault_write:
+#         secret: '/auth/approle/role/minio/secret-id'
+#         data:
+#           wrap_ttl: '60m'
+#       register: minio_wrapped_role_secret
+
+#       # Need fullchain in system for this to work
+#       # Just msg: "OK (1285) bytes?"
+#     # - uri:
+#     #     headers:
+#     #       X_Vault_Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+#     #     url: "{{ lookup('env', 'VAULT_ADDR') }}/v1/pki/ca_chain"
+#     #   register: ca_chain
+#     # - debug: "var=ca_chain['msg']"
+
+# - name: minio
+#   hosts: role_minio
+#   become: yes
+
+#   roles:
+#     - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/minio'
+#       service: minio
+#       role_id: "{{ hostvars['localhost']['minio_role_id']['value'] }}"
+#       wrapped_role_secret: "{{ hostvars['localhost']['minio_wrapped_role_secret']['data']['wrap_info']['token'] }}"
+#       chain: ./chain.pem

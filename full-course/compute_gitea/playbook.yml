@@ -1,0 +1,172 @@
+---
+# - name: Gather facts on all hosts
+#   hosts: all:!type_openstack_compute_floatingip_associate_v2
+#   become: yes
+
+# - name: Dump facts
+#   hosts: localhost
+
+#   tasks:
+#     - delegate_to: localhost
+#       copy:
+#         content: "{{ hostvars[groups['minio'][0]] | to_nice_json }}"
+#         dest: ./inv.json
+
+
+- name: Format and mount disks
+  hosts: app_gitea
+  become: yes
+
+  tasks:
+    - name: Grab instance metadata
+      uri:
+        url: http://169.254.169.254/openstack/2012-08-10/meta_data.json
+        method: GET
+        return_content: yes
+      register: openstack_metadata
+    - set_fact:
+        metadata: "{{ openstack_metadata['json']['meta'] }}"
+    - debug: var=metadata
+
+    - include_role:
+        name: disk
+      vars:
+        dev: "{{ item.key }}"
+        path: "{{ item.value }}"
+      with_dict: "{{ metadata['mounts'] | from_json }}"
+
+- name: Initialize PostgreSQL
+  hosts: postgres
+  become: yes
+
+  pre_tasks:
+    - name: Ensure /opt/bin exists
+      file:
+        path: /opt/bin
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Download mc
+      get_url:
+        url: https://dl.minio.io/client/mc/release/linux-amd64/mc
+        dest: /opt/bin/mc
+        owner: root
+        group: root
+        mode: 0755
+    - file:
+        path: /root/.mc
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+    - file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+      with_items:
+        - /root/.mc/certs
+        - /root/.mc/session
+        - /root/.mc/share
+    - file:
+        path: /root/.mc/certs/CAs
+        state: directory
+        owner: root
+        group: root
+        mode: 0700
+      with_items:
+        - certs
+        - session
+        - share
+    - copy:
+        content: |
+          {
+            "version": "9",
+            "hosts": {
+              "local": {
+                "url": "http://localhost:9000",
+                "accessKey": "",
+                "secretKey": "",
+                "api": "S3v4",
+                "lookup": "auto"
+              }
+            }
+          }
+        dest: /root/.mc/config.json
+        owner: root
+        group: root
+        mode: 0600
+    - copy:
+        content: |
+          {
+            "version": "1",
+            "shares": {}
+          }
+        dest: "{{ item }}"
+        owner: root
+        group: root
+        mode: 0600
+      with_items:
+        - /root/.mc/share/downloads.json
+        - /root/.mc/share/uploads.json
+
+  tasks:
+    - include_role:
+        name: postgres
+      vars:
+        listen_addresses: "localhost,127.0.0.1,{{ ansible_default_ipv4['address'] }}"
+        custom_hba_entries:
+          - type: host
+            database: "{{ metadata['postgres_db_name'] }}"
+            user: "{{ metadata['postgres_db_user'] }}"
+            address: "10.0.0.0/8"
+            auth_method: trust
+        db_name: "{{ metadata['postgres_db_name'] }}"
+        db_user: "{{ metadata['postgres_db_user'] }}"
+        backup: "{{ metadata['postgres_backup'] }}"
+        restore: yes
+        bucket: "{{ metadata['postgres_backup_bucket'] }}"
+        s3_endpoint: 10.110.1.16:9000
+
+- name: Setup gitea
+  hosts: gitea
+  become: yes
+
+  tasks:
+    - include_role:
+        name: gitea
+
+# - hosts: localhost
+#   name: vault stuff
+#   tasks:
+#     - hashivault_read:
+#         secret: '/auth/approle/role/minio/role-id'
+#         key: 'role_id'
+#       register: minio_role_id
+#     - hashivault_write:
+#         secret: '/auth/approle/role/minio/secret-id'
+#         data:
+#           wrap_ttl: '60m'
+#       register: minio_wrapped_role_secret
+
+#       # Need fullchain in system for this to work
+#       # Just msg: "OK (1285) bytes?"
+#     # - uri:
+#     #     headers:
+#     #       X_Vault_Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+#     #     url: "{{ lookup('env', 'VAULT_ADDR') }}/v1/pki/ca_chain"
+#     #   register: ca_chain
+#     # - debug: "var=ca_chain['msg']"
+
+# - name: minio
+#   hosts: role_minio
+#   become: yes
+
+#   roles:
+#     - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/minio'
+#       service: minio
+#       role_id: "{{ hostvars['localhost']['minio_role_id']['value'] }}"
+#       wrapped_role_secret: "{{ hostvars['localhost']['minio_wrapped_role_secret']['data']['wrap_info']['token'] }}"
+#       chain: ./chain.pem

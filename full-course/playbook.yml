@@ -1,0 +1,80 @@
+---
+- name: Gather facts on all hosts
+  hosts: all:!type_openstack_compute_floatingip_associate_v2
+  become: yes
+
+- name: CoreDNS
+
+  hosts: role_coredns
+  become: yes
+
+  roles:
+    - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/coredns'
+      service: coredns
+
+- name: Initialize Root CA
+  hosts: role_cfssl
+  become: yes
+
+  roles:
+    - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/cfssl'
+      LOCAL_IPV4: "{{ ansible_default_ipv4['address'] }}"
+      auth_key: "{{ cfssl_auth_key }}"
+
+- name: etcd
+  hosts: role_etcd
+  become: yes
+
+  roles:
+    - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/etcd'
+      auth_key: "{{ cfssl_auth_key }}"
+      ROOTCA_IPV4: "{{ hostvars[groups['cfssl'][0]]['ansible_default_ipv4']['address'] }}"
+      LOCAL_IPV4: "{{ ansible_default_ipv4['address'] }}"
+      ETCD_REGISTRY: "gcr.io/etcd-development/etcd"
+      ETCD_VERSION: "3.3.9"
+
+- name: vault
+  hosts: role_vault
+  become: yes
+
+  roles:
+    - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/vault'
+      auth_key: "{{ cfssl_auth_key }}"
+      ROOTCA_IPV4: "{{ hostvars[groups['cfssl'][0]]['ansible_default_ipv4']['address'] }}"
+      service: vault
+
+
+- hosts: localhost
+  name: vault stuff
+  tasks:
+    - hashivault_read:
+        secret: '/auth/approle/role/minio/role-id'
+        key: 'role_id'
+      register: minio_role_id
+    - hashivault_write:
+        secret: '/auth/approle/role/minio/secret-id'
+        data:
+          wrap_ttl: '60m'
+      register: minio_wrapped_role_secret
+
+      # Need fullchain in system for this to work
+      # Just msg: "OK (1285) bytes?"
+    # - uri:
+    #     headers:
+    #       X_Vault_Token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+    #     url: "{{ lookup('env', 'VAULT_ADDR') }}/v1/pki/ca_chain"
+    #   register: ca_chain
+    # - debug: "var=ca_chain['msg']"
+
+- name: minio
+  hosts: role_minio
+  become: yes
+
+  roles:
+    - role: '/home/jmazz/Documents/repos/openstack-recipes/roles/minio'
+      service: minio
+      role_id: "{{ hostvars['localhost']['minio_role_id']['value'] }}"
+      wrapped_role_secret: "{{ hostvars['localhost']['minio_wrapped_role_secret']['data']['wrap_info']['token'] }}"
+      chain: ./chain.pem
+
+
