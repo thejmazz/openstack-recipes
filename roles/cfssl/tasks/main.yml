@@ -1,0 +1,62 @@
+- name: Ensure /etc/cfssl exists
+  file:
+    path: /etc/cfssl
+    state: directory
+    owner: root
+    group: root
+    mode: 0500
+- name: Copy Root CA certificate signing request configuration into /etc/cfssl
+  copy:
+    src: files/rootca-csr.json
+    dest: /etc/cfssl/rootca-csr.json
+    owner: root
+    group: root
+    mode: 0400
+- name: Generate Root CA Key
+  shell: "/root/go/bin/cfssl gencert -initca rootca-csr.json | /root/go/bin/cfssljson -bare ca"
+  args:
+    creates: /etc/cfssl/ca.pem
+    chdir: /etc/cfssl
+- name: Copy signing-server-config.json
+  template:
+    src: files/signing-server-config.json
+    dest: /etc/cfssl/server-config.json
+    owner: root
+    group: root
+    mode: 0400
+- name: Generate multirootca server key
+  # hostname is set to local IP of server. If we were running our own DNS we could put a fqdn name here too
+  shell: "/root/go/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=server-config.json -hostname={{ LOCAL_IPV4 }} -profile=default rootca-csr.json | /root/go/bin/cfssljson -bare server"
+  args:
+    creates: /etc/cfssl/server.pem
+    chdir: /etc/cfssl
+
+- name: copy multirootca configuration
+  copy:
+    src: files/multiroot-profile.ini
+    dest: /etc/cfssl/multiroot-profile.ini
+    owner: root
+    group: root
+    mode: 0400
+
+- name: Copy multirootca systemd unit
+  copy:
+    src: files/multirootca.service
+    dest: /etc/systemd/system/multirootca.service
+    owner: root
+    group: root
+    mode: 0644
+- name: Start multirootca service
+  service:
+    daemon_reload: yes
+    name: multirootca
+    state: started
+    enabled: yes
+
+- name: Copy Root CA cert to local machine
+  fetch:
+    src: /etc/cfssl/ca.pem
+    dest: rootca.pem
+    # comment this to store in folder by inventory host
+    # e.g. pkitest_ca.pem/x.x.x.x/etc/cfssl/ca.pem
+    flat: yes
