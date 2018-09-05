@@ -1,0 +1,41 @@
+---
+- name: Ensure /etc/cfssl exists
+  file:
+    path: /etc/cfssl
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+- name: Copy ca.pem
+  copy:
+    src: ./rootca.pem
+    dest: /etc/cfssl/ca.pem
+    owner: root
+    group: root
+    mode: 0644
+- name: Copy request-profile.json
+  template:
+    src: files/request-profile.json
+    dest: /etc/cfssl/request-profile.json
+    owner: root
+    group: root
+    mode: 0600
+- name: "Copy {{ certname }}-csr.json"
+  template:
+    src: "{{ csr }}"
+    dest: "/etc/cfssl/{{ certname }}-csr.json"
+    owner: root
+    group: root
+    mode: 0644
+- name: "Generate certificate {{ certname }}"
+  shell: >
+    docker run --rm -v /etc/cfssl:/etc/ssl -w /etc/ssl --entrypoint /usr/bin/env cfssl/cfssl:1.3.2 sh -c "
+    cfssl gencert
+    -config=request-profile.json
+    -tls-remote-ca ca.pem
+    -profile={{ profile }}
+    {{ certname }}-csr.json |
+    cfssljson -bare {{ certname }}"
+  args:
+    creates: "/etc/cfssl/{{ certname }}.pem"
+    chdir: /etc/cfssl
