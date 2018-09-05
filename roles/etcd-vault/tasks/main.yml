@@ -1,0 +1,49 @@
+---
+- name: Ensure /var/lib/etcd exists
+  file:
+    path: /var/lib/etcd
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Ensure /opt/etcd and /opt/etcd/secrets exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - /opt/etcd
+    - /opt/etcd/secrets
+- name: Copy secrets
+  copy:
+    content: "{{ item['content'] }}"
+    dest: "/opt/etcd/secrets/{{ item['file'] }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - file: role_id
+      content: "{{ role_id }}"
+    - file: wrapped_secret_id
+      content: "{{ wrapped_secret_id }}"
+- name: Copy chain.pem
+  copy:
+    src: "{{ chain }}"
+    dest: "/opt/etcd/secrets/chain.pem"
+    owner: root
+    group: root
+    mode: 0444
+
+- name: Set up docker-compose service
+  include_role:
+    name: '/home/jmazz/Documents/repos/openstack-recipes/roles/docker-compose'
+  vars:
+    docker_compose: "templates/docker-compose.yml"
+    etcd_registry: "gcr.io/etcd-development/etcd"
+    etcd_version: "3.3.9"
+    LOCAL_IPV4: "{{ ansible_default_ipv4['address'] }}"
+    etcd_nodes_group: network_dns
+    # peer_cn: etcd.coredns.local

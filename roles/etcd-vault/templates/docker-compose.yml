@@ -1,0 +1,93 @@
+version: '2.3'
+
+services:
+  init:
+    container_name: etcd_init
+    image: vault
+    environment:
+      VAULT_ADDR: https://{{ hostvars[groups['role_vault'][0]]['ansible_default_ipv4']['address'] }}:8200
+      VAULT_CACERT: /run/secrets/chain.pem
+    volumes:
+      - ./secrets:/run/secrets
+      - etcd-secrets:/etc/secrets
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        apk add --update --no-cache jq
+
+        vault write sys/wrapping/lookup token=$$(cat /run/secrets/wrapped_secret_id)
+
+        SECRET_ID=$$(vault unwrap -field=secret_id $$(cat /run/secrets/wrapped_secret_id))
+        ROLE_ID=$$(cat /run/secrets/role_id)
+        export VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$$ROLE_ID secret_id=$$SECRET_ID)
+
+        vault write -format=json pki/issue/coredns-etcd-server \
+          common_name={{ ansible_hostname }} \
+          ip_sans=127.0.0.1,{{ ansible_default_ipv4['address'] }} \
+        > server.json
+        cat server.json | jq -r '.data.certificate' > /etc/secrets/server.crt
+        cat server.json | jq -r '.data.private_key' > /etc/secrets/server.key
+
+        vault write -format=json pki/issue/coredns-etcd-peer \
+          common_name={{ peer_cn }} \
+          ip_sans=127.0.0.1,{{ ansible_default_ipv4['address'] }} \
+        > peer.json
+        cat peer.json | jq -r '.data.certificate' > /etc/secrets/peer.crt
+        cat peer.json | jq -r '.data.private_key' > /etc/secrets/peer.key
+
+        cat peer.json | jq -r '.data.issuing_ca' > /etc/secrets/ca.crt
+
+        rm server.json peer.json
+
+        touch /done
+        sleep 30
+    healthcheck:
+      test: find /done
+      interval: 5s
+      timeout: 2s
+      retries: 3
+      start_period: 600s
+
+  etcd:
+    container_name: etcd
+    image: {{ etcd_registry }}:v{{ etcd_version }}
+    network_mode: host
+    restart: "no"
+    volumes:
+      - /var/lib/etcd:/etcd-data
+      - etcd-secrets:/etc/secrets
+    depends_on:
+      init:
+        condition: service_healthy
+    command:
+      - /usr/local/bin/etcd
+      - --name={{ ansible_hostname }}
+      - --data-dir=/etcd-data
+      - --listen-client-urls=https://{{ LOCAL_IPV4 }}:2379,https://127.0.0.1:2379
+      - --advertise-client-urls=https://{{ LOCAL_IPV4 }}:2379
+      - --listen-peer-urls=https://{{ LOCAL_IPV4 }}:2380
+      - --initial-advertise-peer-urls=https://{{ LOCAL_IPV4 }}:2380
+      - --initial-cluster-token=etcd-cluster-1
+      - --initial-cluster={% for host in groups[etcd_nodes_group] %}
+{{ hostvars[host]['ansible_hostname'] }}=https://{{ host }}:2380 {%- if not loop.last %},{% endif %}
+{% endfor %}
+
+      - --initial-cluster-state=new
+      - --client-cert-auth
+      - --trusted-ca-file=/etc/secrets/ca.crt
+      - --cert-file=/etc/secrets/server.crt
+      - --key-file=/etc/secrets/server.key
+      - --peer-client-cert-auth
+      - --peer-trusted-ca-file=/etc/secrets/ca.crt
+      - --peer-cert-file=/etc/secrets/peer.crt
+      - --peer-key-file=/etc/secrets/peer.key
+      - --peer-cert-allowed-cn={{ peer_cn }}
+
+volumes:
+  etcd-secrets:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

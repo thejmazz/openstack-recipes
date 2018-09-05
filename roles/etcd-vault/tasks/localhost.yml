@@ -1,0 +1,41 @@
+---
+- name: Create PKI roles
+  hashivault_write:
+    secret: '/pki/roles/coredns-etcd-server'
+    data:
+      allow_localhost: true
+      allowed_domains:  "{{ allowed_domains }}"
+      allow_bare_domains: true
+      allow_subdomains: false
+      allow_glob_domains: true
+      allow_any_name: false
+      enforce_hostnames: true
+      allow_ip_sans: true
+      server_flag: true
+      client_flag: true
+- name: Create PKI etcd peer role
+  hashivault_write:
+    secret: '/pki/roles/coredns-etcd-peer'
+    data:
+      allow_localhost: true
+      allowed_domains: [ "{{ peer_cn }}" ]
+      allow_bare_domains: true
+      allow_subdomains: false
+      allow_glob_domains: false
+      allow_any_name: false
+      enforce_hostnames: true
+      allow_ip_sans: true
+      server_flag: true
+      client_flag: true
+
+- hashivault_policy_set:
+    name: coredns_etcd
+    rules: |
+      path "pki/issue/coredns-etcd-*" {
+        capabilities = [ "update" ]
+      }
+
+- hashivault_approle_role_create:
+    name: coredns_etcd
+    policies:
+      - coredns_etcd
