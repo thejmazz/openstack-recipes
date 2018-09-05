@@ -1,0 +1,26 @@
+version: '3.3'
+
+services:
+  vault:
+    container_name: vault
+    network_mode: bridge
+    image: vault:0.10.4
+    ports:
+      - "8200:8200"
+    volumes:
+      - /etc/vault:/etc/vault
+    command: [ "server", "-config=/etc/vault/config.hcl" ]
+    secrets:
+      - etcd-ca.pem
+      - etcd-vault.pem
+      - etcd-vault-key.pem
+    cap_add:
+      - IPC_LOCK
+
+secrets:
+  etcd-ca.pem:
+    file: /etc/cfssl/ca.pem
+  etcd-vault.pem:
+    file: /etc/cfssl/etcd-vault.pem
+  etcd-vault-key.pem:
+    file: /etc/cfssl/etcd-vault-key.pem

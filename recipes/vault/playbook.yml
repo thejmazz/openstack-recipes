@@ -1,0 +1,67 @@
+---
+- name: Vault
+
+  hosts: role_vault
+  become: yes
+
+  pre_tasks:
+    - name: Ensure /etc/cfssl exists
+      file:
+        path: /etc/cfssl
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy ca.pem
+      copy:
+        src: ./pkitest_ca.pem
+        dest: /etc/cfssl/ca.pem
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy request-profile.json
+      template:
+        src: ./request-profile.json
+        dest: /etc/cfssl/request-profile.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy etcd-vault.csr.json
+      copy:
+        src: ./etcd-vault.csr.json
+        dest: /etc/cfssl/etcd-vault.csr.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Generate root user client TLS cert
+      shell: >
+        docker run --rm -v /etc/cfssl:/etc/ssl -w /etc/ssl --entrypoint /usr/bin/env cfssl/cfssl:1.3.2 sh -c "
+        cfssl gencert
+        -config=request-profile.json
+        -tls-remote-ca ca.pem
+        -profile=client
+        etcd-vault.csr.json |
+        cfssljson -bare etcd-vault
+        "
+      args:
+        creates: /etc/cfssl/etcd-vault.pem
+
+    - name: Ensure /etc/vault exists
+      file:
+        path: /etc/vault
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy config.hcl
+      copy:
+        src: ./config.hcl
+        dest: /etc/vault/config.hcl
+        owner: root
+        group: root
+        mode: 0644
+
+  roles:
+    - role: "/home/jmazz/Documents/repos/openstack-recipes/roles/docker-compose"
+      service: vault
+      docker_compose: docker-compose.yml
