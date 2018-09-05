@@ -1,0 +1,22 @@
+ui = true
+
+storage "etcd" {
+  address = "{% for host in groups['etcd'] %}
+https://{{ host }}:2379 {%- if not loop.last %},{% endif %}
+{% endfor %}"
+  etcd_api = "v3"
+  ha_enabled = "false"
+  path = "vault/"
+  sync = "true"
+
+  tls_ca_file = "/run/secrets/etcd-ca.pem"
+  tls_cert_file = "/run/secrets/etcd-vault.pem"
+  tls_key_file = "/run/secrets/etcd-vault-key.pem"
+}
+
+listener "tcp" {
+ address = "0.0.0.0:8200"
+
+ tls_cert_file = "/run/secrets/vault-server.crt"
+ tls_key_file = "/run/secrets/vault-server.key"
+}

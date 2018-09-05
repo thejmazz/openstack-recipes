@@ -1,0 +1,34 @@
+---
+- name: Generate certificates
+  include_role:
+    name: '/home/jmazz/r/openstack-recipes/roles/cfssl_sign_csr'
+  vars:
+    certname: etcd-vault
+    profile: client
+    csr: files/csrs/client.json
+
+- name: Set etcd-vault-key.pem readable by group and other so Vault can read it
+  file:
+    path: /etc/cfssl/etcd-vault-key.pem
+    owner: root
+    group: root
+    mode: 0444
+
+- name: Ensure /etc/vault exists
+  file:
+    path: /etc/vault
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+- name: Copy config.hcl
+  template:
+    src: templates/config.hcl.j2
+    dest: /etc/vault/config.hcl
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Set up docker-compose service
+  include_role:
+    name: '/home/jmazz/Documents/repos/openstack-recipes/roles/docker-compose'
