@@ -1,0 +1,58 @@
+---
+- include_role:
+    name: geerlingguy.postgresql
+  vars:
+    postgresql_user: postgres
+    postgresql_group: postgres
+    postgresql_hba_entries: "{{ default_hba_entries }} + {{ custom_hba_entries }}"
+    postgresql_global_config_options:
+      - option: unix_socket_directories
+        value: '{{ postgresql_unix_socket_directories | join(",") }}'
+      - option: listen_addresses
+        value: "{{ listen_addresses }}"
+
+- name: "Create {{ db_name }} database"
+  become: yes
+  become_user: postgres
+  postgresql_db:
+    name: "{{ db_name }}"
+- name: "Create {{ db_user }} postgresql user"
+  become: yes
+  become_user: postgres
+  postgresql_user:
+    db: "{{ db_name }}"
+    name: "{{ db_user }}"
+    password: password
+    priv: ALL
+- name: "Ensure Postgres {{ db_user }} user does not have unnecessary privilege"
+  become: yes
+  become_user: postgres
+  postgresql_user:
+    name: "{{ db_user }}"
+    role_attr_flags: NOSUPERUSER,NOCREATEDB
+- name: "Ensure no other user can access {{ db_name }} database"
+  become: yes
+  become_user: postgres
+  postgresql_privs:
+    db: "{{ db_name }}"
+    role: PUBLIC
+    type: database
+    priv: ALL
+    state: absent
+
+# NOTE can silently fail
+# To avoid:
+# mc: Configuration written to `/root/.mc/config.json`. Please update your access credentials.
+# mc: Successfully created `/root/.mc/share`.
+# mc: Initialized share uploads `/root/.mc/share/uploads.json` file.
+# mc: Initialized share downloads `/root/.mc/share/downloads.json` file.
+# run in docker w/o -t, OR initialize those files
+- name: "Restore database {{ db_name }} from s3://{{ s3_endpoint }}/{{ bucket }}/{{ backup }}"
+  shell: "/opt/bin/mc cat backup/{{ bucket }}/{{ backup }} | gunzip | psql -h localhost -U {{ db_user }} {{ db_name }}"
+  environment:
+    MC_HOSTS_backup: "http://admin:password@{{ s3_endpoint }}"
+    PGPASSWORD: password
+  register: shell_restore
+  when: restore
+  # failed_when: shell_restore.stderr != ""
+- debug: "msg={{ shell_restore.stderr }}"
