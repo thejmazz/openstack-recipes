@@ -1,0 +1,14 @@
+# dev: vdb
+# path: /data
+
+fstype: ext4
+resizefs: no
+force: no
+mkfs_opts: ''
+mount_opts: 'defaults'
+# absent, mounted, present, unmounted
+mount_state: mounted
+
+path_owner: root
+path_group: root
+path_mode: 0755

@@ -1,0 +1,35 @@
+---
+- name: "Make an {{ fstype }} filesystem on /dev/{{ dev }}"
+  filesystem:
+    fstype: "{{ fstype }}"
+    dev: "/dev/{{ dev }}"
+    resizefs: "{{ resizefs }}"
+    force: "{{ force }}"
+    opts: "{{ mkfs_opts }}"
+  register: mkfs
+
+- name: Gather facts again to discover details of newly formatted disk
+  setup:
+  when: mkfs.changed
+
+- name: "Save UUID of disk on device /dev/{{ dev }}"
+  set_fact:
+    # ansible_facts['devices'] vs. ansible_devices ?
+    uuid: "{{ ansible_devices[dev]['links']['uuids'][0] }}"
+
+- name: "Ensure {{ path }} exists"
+  file:
+    path: "{{ path }}"
+    state: directory
+    owner: "{{ path_owner }}"
+    group: "{{ path_group }}"
+    mode: "{{ path_mode }}"
+
+- name: "Mount {{ uuid }} to {{ path }}"
+  mount:
+    src: "UUID={{ uuid }}"
+    path: "{{ path }}"
+    fstype: "{{ fstype }}"
+    opts: "{{ mount_opts }}"
+    state: "{{ mount_state }}"
+    backup: no
