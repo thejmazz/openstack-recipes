@@ -1,0 +1,42 @@
+---
+# Set up directories
+- name: "Ensure /opt/{{ service }} exists"
+  file:
+    path: "/opt/{{ service }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+- name: "Ensure /opt/{{ service }}/secrets exists"
+  file:
+    path: "/opt/{{ service }}/secrets"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  when: secrets_folder
+
+- name: Copy docker-compose.yml
+  template:
+    src: "{{ docker_compose }}"
+    dest: "/opt/{{ service }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: 0755
+  notify: restart_service
+- name: Template systemd unit
+  template:
+    src: templates/docker-compose.service.j2
+    dest: "/etc/systemd/system/{{ service }}.service"
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart_service
+
+- name: Start and enable service
+  service:
+    daemon_reload: yes
+    name: "{{ service }}"
+    state: started
+    enabled: yes
+  register: started_service

@@ -1,0 +1,8 @@
+---
+- name: restart_service
+  service:
+    daemon_reload: yes
+    name: "{{ service }}"
+    state: restarted
+    enabled: yes
+  when: not started_service.changed

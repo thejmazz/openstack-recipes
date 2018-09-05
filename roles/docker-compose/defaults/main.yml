@@ -1,0 +1,7 @@
+---
+service: 'myproject'
+after: ''
+requires: ''
+secrets_folder: false
+secrets: []
+docker_compose: files/docker-compose.yml
