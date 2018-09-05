@@ -143,3 +143,5 @@ openstack image delete pkitest_ubuntu_1604_cfssl_1-3-2
 
 - [Building a Secure Public Key Infrastructure for Kubernetes](https://www.mikenewswanger.com/posts/2018/kubernetes-pki/)
 - [How TLS/SSL Works](https://github.com/hashicorp/terraform-aws-vault/tree/master/modules/private-tls-cert#background)
+- [Unable to create a root and intermediate CA](https://github.com/cloudflare/cfssl/issues/652)
+- [Online Certificate Decoder](https://www.sslshopper.com/certificate-decoder.html)
