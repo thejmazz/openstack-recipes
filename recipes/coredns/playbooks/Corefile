@@ -1,0 +1,16 @@
+. {
+    etcd {
+        stubzones
+        fallthrough
+        path /skydns
+        endpoint https://10.210.0.10:2379 https://10.210.0.11:2379 https://10.210.0.12:2379
+        tls /run/secrets/client.pem /run/secrets/key.pem /run/secrets/ca.pem
+    }
+
+    proxy . 8.8.8.8
+
+    log
+    errors
+    cache
+    health :8080
+}

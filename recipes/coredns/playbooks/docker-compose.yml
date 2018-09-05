@@ -1,0 +1,84 @@
+version: '3.3'
+
+services:
+  health:
+    container_name: coredns_healthcheck
+    image: alpine:3.8
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        apk update && apk add --no-cache curl
+
+        # exec "$$@"
+        tail -f /dev/null
+    # command: [ 'tail', '-f', '/dev/null' ]
+    healthcheck:
+      test: [ 'CMD', 'curl', '-f', 'http://coredns:8080/health' ]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      # start_period: 15s
+  coredns:
+    container_name: coredns
+    image: coredns/coredns:1.2.0
+    entrypoint: [ '/coredns' ]
+    command: [ '-conf', '/etc/coredns/Corefile' ]
+    dns:
+      - 8.8.8.8
+    dns_search:
+      - novalocal
+      - hpc4health
+    expose:
+      - '8080'
+    ports:
+      - target: 53
+        published: 53
+        protocol: tcp
+      - target: 53
+        published: 53
+        protocol: udp
+    secrets:
+      - source: etcd_ca
+        target: ca.pem
+      - source: etcd_coredns_cert
+        target: client.pem
+      - source: etcd_coredns_key
+        target: key.pem
+    volumes:
+      - type: bind
+        source: /etc/coredns
+        target: /etc/coredns
+        read_only: true
+    restart: 'no'
+    environment:
+      FOO: bar
+    # network_mode: 'bridge'
+    # Alternatively, manage iptables so we can SNAT over the bridge's interface
+    # See: https://github.com/moby/moby/issues/15086#issuecomment-337501603
+    # networks:
+    #   - hostnet
+
+secrets:
+  etcd_ca:
+    file: /etc/cfssl/ca.pem
+  etcd_coredns_cert:
+    file: /etc/cfssl/etcd-coredns.pem
+  etcd_coredns_key:
+    file: /etc/cfssl/etcd-coredns-key.pem
+
+# networks:
+#   default:
+#     driver: 'bridge'
+    # ipam:
+    #   driver: default
+    #   config:
+    #     - subnet: 172.28.0.0/16
+  # hostnet:
+  #   external: true
+  #   name: host
+
+    # env_file:
+    #   - ./common.env
+    #   - ./apps/web.env
+    #   - /opt/secrets.env
