@@ -1,0 +1,10 @@
+. {
+    proxy . 8.8.8.8
+
+    log
+    errors
+    cache
+    health :8080
+}
+
+# comment

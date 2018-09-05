@@ -1,0 +1,38 @@
+version: '3.3'
+
+services:
+  coredns:
+    container_name: coredns
+    image: coredns/coredns:1.2.0
+    entrypoint: [ '/coredns' ]
+    command: [ '-conf', '/etc/coredns/Corefile' ]
+    expose:
+      - '8080'
+    ports:
+      - target: 53
+        published: 53
+        protocol: tcp
+      - target: 53
+        published: 53
+        protocol: udp
+    # secrets:
+    #   - source: etcd_ca
+    #     target: ca.pem
+    #   - source: etcd_coredns_cert
+    #     target: client.pem
+    #   - source: etcd_coredns_key
+    #     target: key.pem
+    volumes:
+      - type: bind
+        source: /etc/coredns
+        target: /etc/coredns
+        read_only: true
+    restart: 'no'
+
+# secrets:
+#   etcd_ca:
+#     file: /etc/cfssl/ca.pem
+#   etcd_coredns_cert:
+#     file: /etc/cfssl/etcd-coredns.pem
+#   etcd_coredns_key:
+#     file: /etc/cfssl/etcd-coredns-key.pem

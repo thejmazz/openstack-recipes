@@ -1,0 +1,19 @@
+---
+- name: Ensure /etc/coredns exists
+  file:
+    path: /etc/coredns
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+- name: Copy Corefile
+  copy:
+    src: files/Corefile
+    dest: /etc/coredns/Corefile
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart_service
+- name: Set up docker-compose service
+  include_role:
+    name: '/home/jmazz/Documents/repos/openstack-recipes/roles/docker-compose'
