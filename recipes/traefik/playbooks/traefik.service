@@ -1,0 +1,17 @@
+Description=traefik
+After=network.service docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutSec=300
+WorkingDirectory=/opt/traefik
+
+ExecStartPre=/usr/bin/env docker-compose pull
+ExecStart=/usr/bin/env docker-compose up
+ExecStop=/usr/bin/env docker-compose stop
+ExecStopPost=/usr/bin/env docker-compose down
+
+[Install]
+WantedBy=docker.service

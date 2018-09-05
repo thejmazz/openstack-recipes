@@ -1,0 +1,37 @@
+version: '3.3'
+
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:v1.6.5
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /etc/traefik:/etc/traefik
+    secrets:
+      - source: traefik_cert
+        target: traefik.crt
+      - source: traefik_key
+        target: traefik.key
+      - source: etcd_ca
+        target: etcd-ca.crt
+      - source: etcd_coredns_cert
+        target: etcd-client.crt
+      - source: etcd_coredns_key
+        target: etcd-client.key
+    network_mode: 'bridge'
+
+secrets:
+  etcd_ca:
+    file: /etc/cfssl/ca.pem
+  etcd_coredns_cert:
+    file: /etc/cfssl/etcd-client.pem
+  etcd_coredns_key:
+    file: /etc/cfssl/etcd-client-key.pem
+  traefik_cert:
+    file: /etc/cfssl/traefik.pem
+  traefik_key:
+    file: /etc/cfssl/traefik-key.pem
+

@@ -1,0 +1,123 @@
+---
+- name: Traefik with etcd backend
+
+  hosts: role_traefik
+  become: yes
+
+  handlers:
+    - name: restart_traefik
+      service:
+        daemon_reload: yes
+        name: traefik
+        state: restarted
+        enabled: yes
+
+  tasks:
+    - name: Ensure /etc/cfssl exists
+      file:
+        path: /etc/cfssl
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy ca.pem
+      copy:
+        src: ./pkitest_ca.pem
+        dest: /etc/cfssl/ca.pem
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy request-profile.json
+      template:
+        src: ./request-profile.json
+        dest: /etc/cfssl/request-profile.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy etcd-client.csr.json
+      copy:
+        src: ./etcd-client.csr.json
+        dest: /etc/cfssl/etcd-client.csr.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Generate traefik user client TLS cert
+      shell: >
+        docker run --rm -v /etc/cfssl:/etc/ssl -w /etc/ssl --entrypoint /usr/bin/env cfssl/cfssl:1.3.2 sh -c "
+        cfssl gencert
+        -config=request-profile.json
+        -tls-remote-ca ca.pem
+        -profile=client
+        etcd-client.csr.json |
+        cfssljson -bare etcd-client
+        "
+      args:
+        creates: /etc/cfssl/etcd-client.pem
+
+
+    - name: Ensure /opt/traefik exists
+      file:
+        path: /opt/traefik
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy docker-compose.yml
+      copy:
+        src: ./docker-compose.yml
+        dest: /opt/traefik/docker-compose.yml
+        owner: root
+        group: root
+        mode: 0644
+      notify: restart_traefik
+    - name: Copy systemd unit
+      copy:
+        src: ./traefik.service
+        dest: /etc/systemd/system/traefik.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Ensure /etc/traefik exists
+      file:
+        path: /etc/traefik
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy traefik.toml
+      copy:
+        src: ./traefik.toml
+        dest: /etc/traefik/traefik.toml
+        owner: root
+        group: root
+        mode: 0644
+      notify: restart_traefik
+
+    - name: Copy traefik.csr.json
+      copy:
+        src: ./traefik.csr.json
+        dest: /etc/cfssl/traefik.csr.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Generate traefik server cert
+      shell: >
+        docker run --rm -v /etc/cfssl:/etc/ssl -w /etc/ssl --entrypoint /usr/bin/env cfssl/cfssl:1.3.2 sh -c "
+        cfssl gencert
+        -config=request-profile.json
+        -tls-remote-ca ca.pem
+        -profile=server
+        traefik.csr.json |
+        cfssljson -bare traefik
+        "
+      args:
+        creates: /etc/cfssl/traefik.pem
+      notify: restart_traefik
+
+    - name: Start traefik service
+      service:
+        daemon_reload: yes
+        name: traefik
+        state: started
+        enabled: yes

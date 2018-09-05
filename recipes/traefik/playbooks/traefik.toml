@@ -1,0 +1,42 @@
+defaultEntrypoints = [ "http", "https" ]
+
+rootCAs = [ "/run/secrets/etcd-ca.crt" ]
+
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+    [entryPoints.http.redirect]
+    entryPoint = "https"
+
+[entryPoints.https]
+  address = ":443"
+    [entryPoints.https.tls]
+      [[entryPoints.https.tls.certificates]]
+      certFile = "/run/secrets/traefik.crt"
+      keyFile = "/run/secrets/traefik.key"
+
+[api]
+
+[etcd]
+endpoint = "10.210.0.10:2379"
+watch = true
+prefix = "/traefik"
+useAPIV3 = true
+  [etcd.tls]
+  ca = "/run/secrets/etcd-ca.crt"
+  cert = "/run/secrets/etcd-client.crt"
+  key = "/run/secrets/etcd-client.key"
+
+[file]
+
+[frontends]
+  [frontends.dasboard]
+  backend = "dashboard"
+    [frontends.dasboard.routes.host]
+    rule = "Host:traefik.candig.local"
+
+[backends]
+  [backends.dashboard]
+    [backends.dashboard.servers.1]
+    url = "http://127.0.0.1:8080"
+
