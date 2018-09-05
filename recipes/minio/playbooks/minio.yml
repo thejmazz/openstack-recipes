@@ -1,0 +1,103 @@
+---
+- name: Minio
+
+  hosts: minio
+  become: yes
+
+  tasks:
+    - name: Ensure /etc/cfssl exists
+      file:
+        path: /etc/cfssl
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Copy ca.pem
+      copy:
+        src: ./pkitest_ca.pem
+        dest: /etc/cfssl/ca.pem
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy request-profile.json
+      template:
+        src: ./request-profile.json
+        dest: /etc/cfssl/request-profile.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy etcd-coredns.csr.json
+      copy:
+        src: ./etcd-coredns.csr.json
+        dest: /etc/cfssl/etcd-coredns.csr.json
+        owner: root
+        group: root
+        mode: 0644
+    - name: Generate root user client TLS cert
+      shell: >
+        docker run --rm -v /etc/cfssl:/etc/ssl -w /etc/ssl --entrypoint /usr/bin/env cfssl/cfssl:1.3.2 sh -c "
+        cfssl gencert
+        -config=request-profile.json
+        -tls-remote-ca ca.pem
+        -profile=client
+        etcd-coredns.csr.json |
+        cfssljson -bare etcd-coredns
+        "
+      args:
+        creates: /etc/cfssl/etcd-coredns.pem
+
+
+    # - name: Format disk
+    #   filesystem:
+    #     fstype: ext4
+    #     dev: /dev/vdb
+    # - name: Mount disk by UUID
+    #   mount:
+    #     path: /data
+    #     src: "UUID={{ ansible_devices['vdb']['links']['uuids'][0] }}"
+    #     fstype: ext4
+    #     state: present
+
+
+    - name: Ensure /opt/minio and /opt/minio/secrets exists
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+      with_items:
+        - /opt/minio
+        - /opt/minio/secrets
+    - name: Copy secrets
+      copy:
+        src: "./secrets/{{ item }}"
+        dest: "/opt/minio/secrets/{{ item }}"
+        owner: root
+        group: root
+        mode: 0644
+      with_items:
+        - minio_access_key
+        - minio_secret_key
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: ./docker-compose.yml
+        dest: /opt/minio/docker-compose.yml
+        owner: root
+        group: root
+        mode: 0644
+    - name: Copy systemd unit
+      copy:
+        src: ./minio.service
+        dest: /etc/systemd/system/minio.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Start minio service
+      service:
+        daemon_reload: yes
+        name: minio
+        state: started
+        enabled: yes

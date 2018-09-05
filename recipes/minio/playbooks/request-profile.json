@@ -1,0 +1,19 @@
+{
+    "signing": {
+        "default": {
+            "auth_remote": {
+                "remote": "ca_server",
+                "auth_key": "default"
+            }
+        }
+    },
+    "auth_keys": {
+        "default": {
+            "key": "{{ auth_key }}",
+            "type": "standard"
+        }
+    },
+    "remotes": {
+        "ca_server": "https://{{ ROOTCA_IPV4 }}:8443"
+    }
+}
