@@ -1,0 +1,38 @@
+---
+- name: Generate certificates
+  include_role:
+    name: '/home/jmazz/r/openstack-recipes/roles/cfssl_sign_csr'
+  with_items:
+    - certname: server
+      profile: server
+      csr: files/csrs/server.json
+    - certname: peer
+      profile: peer
+      csr: files/csrs/peer.json
+    - certname: client
+      profile: client
+      csr: files/csrs/client.json
+  vars:
+    certname: "{{ item['certname'] }}"
+    profile: "{{ item['profile'] }}"
+    csr: "{{ item['csr'] }}"
+- name: Ensure /var/lib/etcd exists
+  file:
+    path: /var/lib/etcd
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+- name: Copy etcd systemd unit
+  template:
+    src: files/etcd.https.service
+    dest: /etc/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: 0644
+- name: Start etcd service
+  service:
+    daemon_reload: yes
+    name: etcd
+    state: started
+    enabled: yes
