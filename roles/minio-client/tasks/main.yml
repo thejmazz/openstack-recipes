@@ -1,0 +1,72 @@
+---
+- name: Ensure /opt/bin exists
+  file:
+    path: /opt/bin
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0755
+- name: Download mc
+  get_url:
+    url: https://dl.minio.io/client/mc/release/linux-amd64/mc
+    dest: /opt/bin/mc
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0755
+- file:
+    path: "/{{ user }}/.mc"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0700
+- file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0700
+  with_items:
+    - "/{{ user }}/.mc/certs"
+    - "/{{ user }}/.mc/session"
+    - "/{{ user }}/.mc/share"
+- file:
+    path: "/{{ user }}/.mc/certs/CAs"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0700
+  with_items:
+    - certs
+    - session
+    - share
+- copy:
+    content: |
+      {
+        "version": "9",
+        "hosts": {
+          "local": {
+            "url": "http://localhost:9000",
+            "accessKey": "",
+            "secretKey": "",
+            "api": "S3v4",
+            "lookup": "auto"
+          }
+        }
+      }
+    dest: "/{{ user }}/.mc/config.json"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0600
+- copy:
+    content: |
+      {
+        "version": "1",
+        "shares": {}
+      }
+    dest: "{{ item }}"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0600
+  with_items:
+    - "/{{ user }}/.mc/share/downloads.json"
+    - "/{{ user }}/.mc/share/uploads.json"
