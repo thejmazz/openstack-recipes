@@ -1,0 +1,68 @@
+---
+- name: Ensure /opt/bin exists
+  file:
+    path: /opt/bin
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+- name: Download Gitea binary
+  # TODO verify with gpg
+  get_url:
+    url: https://dl.gitea.io/gitea/1.5/gitea-1.5-linux-amd64
+    dest: /opt/bin/gitea
+    owner: root
+    group: root
+    mode: 0755
+- name: Make a git user
+  user:
+    name: git
+- name: Ensure git user owns their home
+  file:
+    path: /home/git
+    state: directory
+    owner: git
+    group: git
+    mode: 0755
+
+- name: Create Gitea directories owned by root
+  file:
+    path: "/var/lib/gitea/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  with_items:
+    - custom
+    - public
+- name: Create gitea directories owned by git
+  file:
+    path: "/var/lib/gitea/{{ item }}"
+    state: directory
+    owner: git
+    group: git
+    mode: 0750
+  with_items:
+    - data
+    - indexers
+    - log
+- name: Create /etc/gitea
+  file:
+    path: /etc/gitea
+    state: directory
+    owner: root
+    group: git
+    mode: 0770
+- name: Create Gitea systemd unit
+  copy:
+    src: gitea.service
+    dest: /etc/systemd/system/gitea.service
+    owner: root
+    group: root
+    mode: 0644
+- name: Start Gitea service
+  service:
+    daemon_reload: yes
+    name: gitea
+    state: started
+    enabled: yes
