@@ -1,0 +1,5 @@
+---
+go_version: "1.11"
+go_os: "linux"
+go_arch: "amd64"
+set_go_path: true

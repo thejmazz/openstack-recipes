@@ -1,0 +1,5 @@
+---
+go_version_arch: "{{ 'arm' if go_arch.startswith('arm') else go_arch }}"
+go_version_target: "go version go{{ go_version }} {{ go_os }}/{{ go_version_arch }}"
+go_tarball: "go{{ go_version }}.{{ go_os }}-{{ go_arch }}.tar.gz"
+go_download_location: "https://storage.googleapis.com/golang/{{ go_tarball }}"
